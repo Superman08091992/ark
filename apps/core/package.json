@@ -1,0 +1,10 @@
+{
+  "name":"@ark/core",
+  "version":"0.0.1",
+  "type":"module",
+  "scripts": { "start":"node server.mjs" },
+  "dependencies": {
+    "cors":"^2","dotenv":"^16","express":"^4","morgan":"^1",
+    "@ark/shared-node":"workspace:*"
+  }
+}

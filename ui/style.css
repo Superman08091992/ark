@@ -1,0 +1,42 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background: #222;
+  color: white;
+  padding: 1rem;
+}
+
+.container {
+  width: 90%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+form {
+  margin: 2rem 0;
+}
+
+textarea {
+  width: 100%;
+  height: 120px;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+pre {
+  background: #fff;
+  padding: 1rem;
+  white-space: pre-wrap;
+  border: 1px solid #ccc;
+}
