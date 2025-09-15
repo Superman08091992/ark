@@ -4,3 +4,5 @@ node_modules/
 logs/
 memory/
 .DS_Store
+core.log
+gui.log
