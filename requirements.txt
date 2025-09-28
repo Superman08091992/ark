@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+streamlit
+pydantic
+requests
+torch
+playwright
+selenium
+python-dotenv
+psycopg2-binary
