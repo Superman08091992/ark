@@ -6,3 +6,6 @@ memory/
 .DS_Store
 core.log
 gui.log
+
+# Local Netlify folder
+.netlify
