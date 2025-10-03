@@ -6,7 +6,8 @@ import path from "node:path";
 import { run as runKyle } from "../../agents/kyle/index.js";
 
 const __dirname = path.resolve();
-const PORT = process.env.PORT || 8787;
+const PORT = process.env.PORT || 5000;
+const HOST = "0.0.0.0";
 const app = express();
 
 app.use(cors());
@@ -81,6 +82,6 @@ app.use((err, req, res, next) => {
 });
 
 // ✅ Start server
-app.listen(PORT, () => {
-  console.log(`🚀 ARK Core (Express) running at http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 ARK Core (Express) running at http://${HOST}:${PORT}`);
 });

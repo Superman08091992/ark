@@ -1,0 +1,14 @@
+{
+  "name": "@ark/services-core",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "cors": "^2",
+    "express": "^4",
+    "morgan": "^1",
+    "node-fetch": "^3"
+  }
+}
