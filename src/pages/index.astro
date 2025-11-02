@@ -1,0 +1,72 @@
+---
+import "../styles/global.css";
+
+// Optional metadata
+const title = "A.R.K. — Autonomous Reasoning Kernel";
+const description = "A sovereign AI system framework for autonomy, ethics, and scalable intelligence.";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.ico" />
+    <script type="module" src="/main.js"></script>
+  </head>
+
+  <body class="bg-gradient-to-br from-slate-900 via-black to-slate-950 text-gray-100 font-sans min-h-screen">
+    <header class="text-center py-12 border-b border-gray-800">
+      <h1 class="text-4xl font-bold text-white tracking-wide">{title}</h1>
+      <p class="text-gray-400 mt-2 max-w-2xl mx-auto">{description}</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
+      <section class="p-6 bg-slate-800/40 rounded-2xl shadow-md">
+        <h2 class="text-2xl font-semibold mb-4 text-cyan-400">Core Systems</h2>
+        <ul class="space-y-2 text-gray-300">
+          <li>🧠 <strong>Kyle</strong> — Market & Data Scanner</li>
+          <li>📊 <strong>Joey</strong> — Pattern Screener & Context Builder</li>
+          <li>⚙️ <strong>Kenny</strong> — Executor & Strategy Engine</li>
+          <li>🧩 <strong>HRM</strong> — Hierarchical Reasoning Model Validator</li>
+          <li>💡 <strong>Aletheia</strong> — Symbolic Ethics & Truth Core</li>
+          <li>🧬 <strong>ID</strong> — Adaptive Replica of Operator Decision Model</li>
+        </ul>
+      </section>
+
+      <section class="p-6 bg-slate-800/40 rounded-2xl shadow-md">
+        <h2 class="text-2xl font-semibold mb-4 text-amber-400">Live Node Info</h2>
+        <p class="text-sm text-gray-400">Dynamic system context can be displayed here later via API bindings.</p>
+        <pre id="system-status" class="text-xs bg-slate-950 p-4 mt-4 rounded-lg overflow-x-auto">
+Loading system state...
+        </pre>
+      </section>
+
+      <section class="p-6 bg-slate-800/40 rounded-2xl shadow-md md:col-span-2">
+        <h2 class="text-2xl font-semibold mb-4 text-emerald-400">Network & Governance</h2>
+        <div class="text-gray-300 space-y-3">
+          <p>All modules adhere to immutable moral constraints stored in <code>Graveyard</code>.</p>
+          <p>Each agent reports to <strong>Watchdog</strong> for audit and compliance.</p>
+          <p>Distributed authority with real-time ethics validation and zero hidden control loops.</p>
+        </div>
+      </section>
+
+      <section class="p-6 bg-slate-800/40 rounded-2xl shadow-md md:col-span-2">
+        <h2 class="text-2xl font-semibold mb-4 text-sky-400">Expansion Hooks</h2>
+        <ul class="list-disc list-inside text-gray-300 space-y-2">
+          <li>📦 Connect Supabase, local memory, or PostgreSQL via environment keys.</li>
+          <li>⚙️ Attach <code>Telegram Bots</code> (<em>@slavetotradesbot</em>, <em>@ARK_GATEKEEPER_bot</em>) for interface control.</li>
+          <li>🧠 Integrate <code>Ollama</code> / <code>llama.cpp</code> for local inference.</li>
+          <li>🌐 Expose <code>ARK_API</code> routes for external systems.</li>
+          <li>🧱 Enable <code>1True Infrastructure</code> nodes with hardware control endpoints.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="border-t border-gray-800 text-center py-6 text-sm text-gray-500">
+      <p>© {new Date().getFullYear()} 1True Inc. — Prometheus AI / A.R.K. Build Environment</p>
+      <p class="mt-2">Made with Astro + Tailwind · Sovereign Node Online</p>
+    </footer>
+  </body>
+</html>
