@@ -1,0 +1,12 @@
+[
+  {
+    "timestamp": "2025-11-07T11:35:30.779Z",
+    "agent": "Joey",
+    "type": "conversation",
+    "userMessage": "Calculate statistics",
+    "agentResponse": "🧠 **Data Science Report:**\n\nCurrent Dataset:\n• Conversations: 0\n• Knowledge Nodes: 6\n• Relevant Memories: 0\n• Available Context: Growing\n\nI'm continuously training on our interactions. My machine lea",
+    "topics": [],
+    "sentiment": "neutral",
+    "knowledgeNodes": 6
+  }
+]

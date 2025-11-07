@@ -1,0 +1,19 @@
+{
+  "id": "kyle_1762516037201_wj3qskvu3",
+  "timestamp": "2025-11-07T11:47:17.201Z",
+  "userMessage": "Hello Kyle!",
+  "agentResponse": "",
+  "topics": [],
+  "sentiment": "neutral",
+  "keywords": [
+    "greeting"
+  ],
+  "context": {
+    "userId": "test-user",
+    "timeOfDay": "morning",
+    "history": [],
+    "topics": []
+  },
+  "importance": 50,
+  "relatedMemories": []
+}

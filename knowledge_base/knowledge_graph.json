@@ -1,0 +1,265 @@
+{
+  "nodes": [
+    {
+      "topic": "stock",
+      "content": [
+        {
+          "text": "What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.394Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.396Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "tech stock volatility analysis",
+          "timestamp": "2025-11-07T09:16:19.761Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "tech stock volatility analysis",
+          "timestamp": "2025-11-07T09:16:19.762Z",
+          "source": "Kyle"
+        }
+      ],
+      "related": [
+        "ai",
+        "stock_AI",
+        "analysis"
+      ],
+      "sources": [
+        "Kyle"
+      ],
+      "strength": 4,
+      "lastUpdated": "2025-11-07T09:16:19.762Z"
+    },
+    {
+      "topic": "ai",
+      "content": [
+        {
+          "text": "Related to stock",
+          "timestamp": "2025-11-07T09:15:42.394Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.395Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.396Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.272Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.274Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What have we discussed about AI and stocks recently?",
+          "timestamp": "2025-11-07T09:16:32.017Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What have we discussed about AI and stocks recently?",
+          "timestamp": "2025-11-07T09:16:32.018Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "Based on what others discussed, what should I know about AI trading?",
+          "timestamp": "2025-11-07T11:12:50.259Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "Based on what others discussed, what should I know about AI trading?",
+          "timestamp": "2025-11-07T11:12:50.259Z",
+          "source": "Kyle"
+        }
+      ],
+      "related": [
+        "stock",
+        "stock_AI",
+        "market",
+        "analysis"
+      ],
+      "sources": [
+        "Kyle"
+      ],
+      "strength": 9,
+      "lastUpdated": "2025-11-07T11:12:50.259Z"
+    },
+    {
+      "topic": "stock_AI",
+      "content": [
+        {
+          "text": "Related to stock",
+          "timestamp": "2025-11-07T09:15:42.394Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.395Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "User query: What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.396Z",
+          "source": "market_analysis"
+        },
+        {
+          "text": "What do you think about NVIDIA stock? I heard they are leading in AI chips.",
+          "timestamp": "2025-11-07T09:15:42.397Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.273Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "User query: AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.273Z",
+          "source": "market_analysis"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.274Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What have we discussed about AI and stocks recently?",
+          "timestamp": "2025-11-07T09:16:32.017Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "What have we discussed about AI and stocks recently?",
+          "timestamp": "2025-11-07T09:16:32.018Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "Based on what others discussed, what should I know about AI trading?",
+          "timestamp": "2025-11-07T11:12:50.259Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "Based on what others discussed, what should I know about AI trading?",
+          "timestamp": "2025-11-07T11:12:50.260Z",
+          "source": "Kyle"
+        }
+      ],
+      "related": [
+        "stock",
+        "ai",
+        "market",
+        "analysis"
+      ],
+      "sources": [
+        "Kyle",
+        "market_analysis"
+      ],
+      "strength": 11,
+      "lastUpdated": "2025-11-07T11:12:50.260Z"
+    },
+    {
+      "topic": "market",
+      "content": [
+        {
+          "text": "Related to stock_AI",
+          "timestamp": "2025-11-07T09:15:42.396Z",
+          "source": "market_analysis"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.272Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.273Z",
+          "source": "Kyle"
+        }
+      ],
+      "related": [
+        "stock_AI",
+        "analysis",
+        "ai"
+      ],
+      "sources": [
+        "market_analysis",
+        "Kyle"
+      ],
+      "strength": 3,
+      "lastUpdated": "2025-11-07T09:16:20.273Z"
+    },
+    {
+      "topic": "analysis",
+      "content": [
+        {
+          "text": "Related to stock_AI",
+          "timestamp": "2025-11-07T09:15:42.396Z",
+          "source": "market_analysis"
+        },
+        {
+          "text": "NVIDIA earnings report analysis",
+          "timestamp": "2025-11-07T09:16:19.249Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "NVIDIA earnings report analysis",
+          "timestamp": "2025-11-07T09:16:19.250Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "tech stock volatility analysis",
+          "timestamp": "2025-11-07T09:16:19.762Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "tech stock volatility analysis",
+          "timestamp": "2025-11-07T09:16:19.762Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.272Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "AI chip market trends analysis",
+          "timestamp": "2025-11-07T09:16:20.273Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "semiconductor supply chain analysis",
+          "timestamp": "2025-11-07T09:16:20.786Z",
+          "source": "Kyle"
+        },
+        {
+          "text": "semiconductor supply chain analysis",
+          "timestamp": "2025-11-07T09:16:20.786Z",
+          "source": "Kyle"
+        }
+      ],
+      "related": [
+        "stock_AI",
+        "stock",
+        "market",
+        "ai"
+      ],
+      "sources": [
+        "market_analysis",
+        "Kyle"
+      ],
+      "strength": 9,
+      "lastUpdated": "2025-11-07T09:16:20.786Z"
+    }
+  ]
+}

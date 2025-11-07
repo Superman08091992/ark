@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp": "2025-11-07T11:35:30.843Z",
+    "agent": "HRM",
+    "type": "conversation",
+    "userMessage": "Verify ethical compliance",
+    "agentResponse": "⚖️ **Logical Validation (Master Log Access):**\n\nRequest analyzed against 6 principles.\nMaster Log: 3 total system events tracked\nAgent Activity: Kyle:1 Joey:1 Kenny:1 Aletheia:0 ID:0\nValidation #1\n\n**",
+    "topics": [],
+    "sentiment": "neutral",
+    "knowledgeNodes": 6
+  },
+  {
+    "timestamp": "2025-11-07T11:35:57.223Z",
+    "agent": "HRM",
+    "type": "conversation",
+    "userMessage": "Show me the system activity across all agents",
+    "agentResponse": "⚖️ **Logical Validation (Master Log Access):**\n\nRequest analyzed against 6 principles.\nMaster Log: 6 total system events tracked\nAgent Activity: Kyle:1 Joey:1 Kenny:1 Aletheia:1 ID:1\nValidation #2\n\n**",
+    "topics": [],
+    "sentiment": "neutral",
+    "knowledgeNodes": 6
+  }
+]

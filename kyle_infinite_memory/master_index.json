@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-11-07T11:47:57.046Z",
+  "totalMemories": 16,
+  "index": [
+    {
+      "topic": "stock",
+      "memoryIds": [
+        "kyle_1762516047942_iszzm8y3c",
+        "kyle_1762516047945_9nh6lc7sa"
+      ]
+    },
+    {
+      "topic": "ai",
+      "memoryIds": [
+        "kyle_1762516047942_iszzm8y3c",
+        "kyle_1762516047945_9nh6lc7sa",
+        "kyle_1762516077044_npaue4oco",
+        "kyle_1762516077045_q10zn4frk"
+      ]
+    },
+    {
+      "topic": "stock_AI",
+      "memoryIds": [
+        "kyle_1762516047942_iszzm8y3c",
+        "kyle_1762516047945_9nh6lc7sa",
+        "kyle_1762516077044_npaue4oco",
+        "kyle_1762516077045_q10zn4frk"
+      ]
+    },
+    {
+      "topic": "pattern",
+      "memoryIds": [
+        "kyle_1762516047973_ll9xzo4su",
+        "kyle_1762516047975_nbyxyg3el"
+      ]
+    }
+  ]
+}

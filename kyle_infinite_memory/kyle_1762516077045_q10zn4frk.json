@@ -1,0 +1,17 @@
+{
+  "id": "kyle_1762516077045_q10zn4frk",
+  "timestamp": "2025-11-07T11:47:57.045Z",
+  "userMessage": "recall our discussions about AI and machine learning",
+  "agentResponse": "🔍 **Infinite Memory Recall:**\n\n**stock** (3 total memories):\n  1. [Importance: 65] I want to analyze NVIDIA stock for AI chip investments...\n  2. [Importance: 65] I want to analyze NVIDIA stock for AI chip investments...\n  3. [Importance: 60] recall our discussions about AI and machine learning...\n\n**stock** (3 total memories):\n  1. [Importance: 65] I want to analyze NVIDIA stock for AI chip investments...\n  2. [Importance: 65] I want to analyze NVIDIA stock for AI chip investments...\n  3. [Importance: 60] recall our discussions about AI and machine learning...\n\n**Archive Statistics:**\n• Total memories searched: 15\n• Compression ratio: 0/4 topics\n• Index size: 4 entries\n\nI can recall ANYTHING from our history - just ask!",
+  "topics": [
+    "ai",
+    "stock_AI"
+  ],
+  "sentiment": "neutral",
+  "keywords": [],
+  "context": {
+    "timestamp": "2025-11-07T11:47:57.045Z"
+  },
+  "importance": 60,
+  "relatedMemories": []
+}

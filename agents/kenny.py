@@ -1,659 +1,813 @@
+"""
+Kenny - The Builder
+Execution and materialization agent with advanced file management
+"""
+
 import asyncio
 import json
-from typing import Dict, Any, List
+import os
+import subprocess
 from datetime import datetime
-import uuid
+from typing import Dict, Any, List
 from agents.base_agent import BaseAgent
-from config.database import db_manager, Plan, AgentLog
-from config.settings import settings
-from core.simulation_engine import SimulationEngine
-from core.consent_registry import ConsentRegistry
+import logging
+
+logger = logging.getLogger(__name__)
 
 class KennyAgent(BaseAgent):
-    """Kenny - Execution Agent (with simulation mode)"""
+    """Kenny - The Builder: Execution and materialization"""
     
     def __init__(self):
-        super().__init__(
-            name="Kenny",
-            description="Plan execution agent with simulation capabilities and safety controls"
-        )
-        self.simulation_mode = settings.KENNY_SIMULATION_MODE
-        self.simulation_engine = SimulationEngine()
-        self.consent_registry = ConsentRegistry()
-        self.execution_history = []
+        super().__init__("Kenny", "The Builder")
+        self._agent_tools = [
+            'build_website', 'create_dashboard', 'execute_code', 'organize_files',
+            'create_report', 'build_tool', 'file_manager', 'backup_system'
+        ]
         
-    def validate_input(self, input_data: Dict[str, Any]) -> bool:
-        """Validate input data for Kenny"""
-        required_fields = ["task_type"]
-        return all(field in input_data for field in required_fields)
-    
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Main processing method for plan execution"""
-        task_type = input_data.get("task_type")
-        
-        if task_type == "execute_plan":
-            return await self._execute_plan(input_data)
-        elif task_type == "simulate_execution":
-            return await self._simulate_execution(input_data)
-        elif task_type == "validate_plan":
-            return await self._validate_plan(input_data)
-        elif task_type == "rollback_execution":
-            return await self._rollback_execution(input_data)
-        elif task_type == "check_prerequisites":
-            return await self._check_prerequisites(input_data)
-        else:
-            raise ValueError(f"Unknown task type: {task_type}")
-    
-    async def _execute_plan(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute an approved plan"""
-        plan_id = input_data.get("plan_id")
-execution_mode = input_data.get("execution_mode", "simulation" if self.simulation_mode else "live")
-        
-        if not plan_id:
-            raise ValueError("Plan ID is required for execution")
-        
-        # Fetch plan from database
-        plan = await self._fetch_plan(plan_id)
-        if not plan:
-            raise ValueError(f"Plan {plan_id} not found")
-        
-        # Verify plan approval status
-        if plan["status"] != "approved":
-            raise ValueError(f"Plan {plan_id} is not approved for execution (status: {plan['status']})")
-        
-        # Check user consent
-        consent_check = await self.consent_registry.check_execution_consent(
-            plan_id, plan["plan_data"]
-        )
-        if not consent_check["granted"]:
-            raise ValueError(f"Execution consent not granted: {consent_check['reason']}")
-        
-        # Perform pre-execution validation
-        validation_result = await self._validate_plan({"plan_data": plan["plan_data"]})
-        if validation_result["status"] != "valid":
-            raise ValueError(f"Plan validation failed: {validation_result['errors']}")
-        
-        execution_id = str(uuid.uuid4())
-        
-        try:
-            if execution_mode == "simulation":
-                result = await self._simulate_execution({
-                    "plan_data": plan["plan_data"],
-                    "execution_id": execution_id
-                })
-            else:
-                result = await self._live_execution(plan["plan_data"], execution_id)
-            
-            # Update plan status
-            await self._update_plan_status(plan_id, "executed", result)
-            
-            # Log execution
-            await self._log_execution_result(execution_id, plan_id, result, execution_mode)
-            
-            return {
-                "status": "completed",
-                "execution_id": execution_id,
-                "execution_mode": execution_mode,
-                "plan_id": plan_id,
-                "result": result,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            
-        except Exception as e:
-            # Log failed execution
-            await self._log_execution_result(
-                execution_id, plan_id, 
-                {"error": str(e), "status": "failed"}, 
-                execution_mode
-            )
-            
-            # Update plan status
-            await self._update_plan_status(plan_id, "failed", {"error": str(e)})
-            
-            raise
-    
-    async def _simulate_execution(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Simulate plan execution without real actions"""
-        plan_data = input_data.get("plan_data")
-        execution_id = input_data.get("execution_id", str(uuid.uuid4()))
-        
-        if not plan_data:
-            raise ValueError("Plan data is required for simulation")
-        
-        # Use simulation engine to model execution
-        simulation_result = await self.simulation_engine.simulate_plan_execution(plan_data)
-        
-        # Add execution metadata
-        simulation_result.update({
-            "execution_id": execution_id,
-            "execution_mode": "simulation",
-            "simulated_at": datetime.utcnow().isoformat(),
-            "simulation_parameters": await self._get_simulation_parameters()
-        })
-        
-        return simulation_result
-    
-    async def _live_execution(self, plan_data: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute plan with real actions (trading, contracts, etc.)"""
-        execution_results = []
-        
-        # Process each action in the plan
-        for action in plan_data.get("actions", []):
-            action_result = await self._execute_action(action, execution_id)
-            execution_results.append(action_result)
-            
-            # If any action fails, consider rollback
-            if action_result.get("status") == "failed":
-                rollback_required = action_result.get("rollback_required", False)
-                if rollback_required:
-                    await self._initiate_rollback(execution_results, execution_id)
-                    break
-        
-        # Calculate overall execution result
-        successful_actions = [r for r in execution_results if r.get("status") == "success"]
-        failed_actions = [r for r in execution_results if r.get("status") == "failed"]
-        
-        overall_status = "success" if len(failed_actions) == 0 else "partial" if len(successful_actions) > 0 else "failed"
-        
-        return {
-            "overall_status": overall_status,
-            "successful_actions": len(successful_actions),
-            "failed_actions": len(failed_actions),
-            "execution_results": execution_results,
-            "execution_summary": await self._generate_execution_summary(execution_results)
-        }
-    
-    async def _execute_action(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute a single action"""
-        action_type = action.get("action")
-        weight = action.get("weight", 1.0)
-        
-        self.logger.info(f"Executing action {action_type} with weight {weight}")
-        
-        try:
-            if action_type == "diversify_portfolio":
-                return await self._execute_diversify_portfolio(action, execution_id)
-            elif action_type == "hedge_positions":
-                return await self._execute_hedge_positions(action, execution_id)
-            elif action_type == "maintain_cash_position":
-                return await self._execute_maintain_cash(action, execution_id)
-            elif action_type == "strategic_allocation":
-                return await self._execute_strategic_allocation(action, execution_id)
-            elif action_type == "tactical_trading":
-                return await self._execute_tactical_trading(action, execution_id)
-            elif action_type == "cash_management":
-                return await self._execute_cash_management(action, execution_id)
-            elif action_type == "momentum_trading":
-                return await self._execute_momentum_trading(action, execution_id)
-            elif action_type == "leverage_positions":
-                return await self._execute_leverage_positions(action, execution_id)
-            elif action_type == "options_strategies":
-                return await self._execute_options_strategies(action, execution_id)
-            else:
-                return {
-                    "status": "failed",
-                    "action": action_type,
-                    "error": f"Unknown action type: {action_type}",
-                    "rollback_required": False
+        # Initialize Kenny's memory with build preferences
+        memory = self.get_memory()
+        if not memory:
+            memory = {
+                'projects_built': [],
+                'preferred_formats': ['json', 'csv', 'html', 'md', 'py'],
+                'build_count': 0,
+                'tools_created': [],
+                'file_organization': {
+                    'documents': ['txt', 'md', 'pdf', 'docx'],
+                    'data': ['json', 'csv', 'xlsx', 'db'],
+                    'code': ['py', 'js', 'html', 'css'],
+                    'media': ['jpg', 'png', 'mp4', 'mp3']
                 }
-        
-        except Exception as e:
-            return {
-                "status": "failed",
-                "action": action_type,
-                "error": str(e),
-                "rollback_required": True
             }
+            self.save_memory(memory)
     
-    async def _execute_diversify_portfolio(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute portfolio diversification"""
-        # In simulation mode or demo, return mock result
-        if self.simulation_mode:
-            return {
-                "status": "success",
-                "action": "diversify_portfolio",
-                "details": {
-                    "assets_rebalanced": 5,
-                    "new_allocations": {
-                        "stocks": 0.6,
-                        "bonds": 0.3,
-                        "cash": 0.1
-                    },
-                    "execution_cost": 25.50
-                },
-                "execution_time": "2023-09-26T10:15:00Z"
-            }
+    async def process_message(self, message: str) -> Dict[str, Any]:
+        """Process user message with Kenny's builder perspective"""
+        logger.info(f"Kenny processing: {message}")
         
-        # In live mode, would make actual API calls to broker
-        # For now, return simulated result with warning
-        return {
-            "status": "success",
-            "action": "diversify_portfolio",
-            "details": {
-                "message": "Live trading not implemented - returned simulation result",
-                "simulated": True
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_hedge_positions(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute position hedging"""
-        return {
-            "status": "success",
-            "action": "hedge_positions",
-            "details": {
-                "hedges_placed": 3,
-                "hedge_ratio": 0.8,
-                "instruments_used": ["SPY puts", "VIX calls"],
-                "cost": 150.75
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_maintain_cash(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute cash position maintenance"""
-        return {
-            "status": "success",
-            "action": "maintain_cash_position",
-            "details": {
-                "cash_target": 0.2,
-                "current_cash": 0.15,
-                "adjustment_needed": 0.05,
-                "action_taken": "sell_positions"
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_strategic_allocation(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute strategic asset allocation"""
-        return {
-            "status": "success",
-            "action": "strategic_allocation",
-            "details": {
-                "allocation_changes": {
-                    "equities": "+5%",
-                    "fixed_income": "-3%",
-                    "alternatives": "-2%"
-                },
-                "rebalancing_cost": 75.25
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_tactical_trading(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute tactical trading moves"""
-        return {
-            "status": "success",
-            "action": "tactical_trading",
-            "details": {
-                "trades_executed": 4,
-                "total_volume": 1000,
-                "average_fill_price": 145.67,
-                "commission": 12.00
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_cash_management(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute cash management operations"""
-        return {
-            "status": "success",
-            "action": "cash_management",
-            "details": {
-                "cash_optimized": True,
-                "yield_enhancement": 0.02,
-                "liquidity_maintained": True
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_momentum_trading(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute momentum trading strategy"""
-        return {
-            "status": "success",
-            "action": "momentum_trading",
-            "details": {
-                "momentum_signals": 3,
-                "positions_opened": 2,
-                "expected_return": 0.08,
-                "risk_score": 0.6
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_leverage_positions(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute leveraged position strategy"""
-        return {
-            "status": "success",
-            "action": "leverage_positions",
-            "details": {
-                "leverage_ratio": 1.5,
-                "margin_used": 0.3,
-                "interest_cost": 0.05,
-                "positions_leveraged": 2
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _execute_options_strategies(self, action: Dict[str, Any], execution_id: str) -> Dict[str, Any]:
-        """Execute options trading strategies"""
-        return {
-            "status": "success",
-            "action": "options_strategies",
-            "details": {
-                "strategies_deployed": ["covered_call", "protective_put"],
-                "premium_collected": 250.00,
-                "protection_level": 0.95
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _validate_plan(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate plan before execution"""
-        plan_data = input_data.get("plan_data")
+        message_lower = message.lower()
+        tools_used = []
+        files_created = []
+        response = ""
         
-        if not plan_data:
-            return {
-                "status": "invalid",
-                "errors": ["Plan data is required"]
-            }
-        
-        errors = []
-        warnings = []
-        
-        # Validate plan structure
-        if "actions" not in plan_data:
-            errors.append("Plan must contain actions")
-        
-        if "parameters" not in plan_data:
-            errors.append("Plan must contain parameters")
-        
-        # Validate actions
-        if "actions" in plan_data:
-            for i, action in enumerate(plan_data["actions"]):
-                if "action" not in action:
-                    errors.append(f"Action {i} missing action type")
+        try:
+            if any(word in message_lower for word in ['create', 'build', 'make', 'generate']):
+                if any(word in message_lower for word in ['website', 'page', 'html']):
+                    # Build website
+                    result = await self.tool_build_website(message)
+                    tools_used.append('build_website')
+                    if result['success']:
+                        files_created.extend(result.get('files', []))
+                        response = f"🔨 **Kenny builds reality...**\n\n"
+                        response += f"Website constructed: {result['title']}\n"
+                        response += f"Files created: {', '.join(result['files'])}\n\n"
+                        response += "The foundation is solid. The structure lives."
+                    else:
+                        response = f"⚠️ Construction encountered obstacles: {result['error']}"
                 
-                if "weight" not in action:
-                    warnings.append(f"Action {i} missing weight, using default")
-        
-        # Validate parameters
-        if "parameters" in plan_data:
-            params = plan_data["parameters"]
+                elif any(word in message_lower for word in ['report', 'document', 'analysis']):
+                    # Create report
+                    result = await self.tool_create_report(message)
+                    tools_used.append('create_report')
+                    if result['success']:
+                        files_created.append(result['filename'])
+                        response = f"📊 **Kenny materializes insights...**\n\n"
+                        response += f"Report forged: `{result['filename']}`\n"
+                        response += f"Sections: {result['sections']}\n\n"
+                        response += "Knowledge takes form. Truth becomes tangible."
+                    else:
+                        response = f"📋 Report construction failed: {result['error']}"
+                
+                elif any(word in message_lower for word in ['dashboard', 'monitor', 'status']):
+                    # Create dashboard
+                    result = await self.tool_create_dashboard()
+                    tools_used.append('create_dashboard')
+                    if result['success']:
+                        files_created.extend(result['files'])
+                        response = f"📈 **Kenny constructs awareness...**\n\n"
+                        response += f"Dashboard manifested: `{result['main_file']}`\n"
+                        response += f"Components: {len(result['files'])} files\n\n"
+                        response += "Now you can see what I see. Clarity through creation."
+                    else:
+                        response = f"📊 Dashboard construction failed: {result['error']}"
+                
+                else:
+                    # General file creation
+                    result = await self.tool_build_tool(message)
+                    tools_used.append('build_tool')
+                    if result['success']:
+                        files_created.append(result['filename'])
+                        response = f"🛠️ **Kenny forges tools...**\n\n"
+                        response += f"Tool created: `{result['filename']}`\n"
+                        response += f"Purpose: {result['description']}\n\n"
+                        response += "From thought to form. The tool serves its master."
             
-            if "risk_tolerance" in params:
-                risk_tolerance = params["risk_tolerance"]
-                if not (0 <= risk_tolerance <= 1):
-                    errors.append("Risk tolerance must be between 0 and 1")
+            elif any(word in message_lower for word in ['organize', 'clean', 'sort', 'manage']):
+                # File organization
+                result = await self.tool_organize_files()
+                tools_used.append('organize_files')
+                if result['success']:
+                    response = f"🗂️ **Kenny brings order to chaos...**\n\n"
+                    response += f"Files organized: {result['files_moved']}\n"
+                    response += f"Folders created: {result['folders_created']}\n\n"
+                    response += "Structure emerges from disorder. All things find their place."
+                else:
+                    response = f"📁 Organization encountered resistance: {result['error']}"
             
-            if "max_position_size" in params:
-                max_position = params["max_position_size"]
-                if not (0 < max_position <= 1):
-                    errors.append("Max position size must be between 0 and 1")
-        
-        # Check market conditions
-        market_validation = await self._validate_market_conditions()
-        if not market_validation["suitable"]:
-            warnings.append(f"Market conditions warning: {market_validation['reason']}")
-        
-        status = "valid" if len(errors) == 0 else "invalid"
-        
-        return {
-            "status": status,
-            "errors": errors,
-            "warnings": warnings,
-            "market_conditions": market_validation,
-            "validation_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _rollback_execution(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Rollback a failed execution"""
-        execution_id = input_data.get("execution_id")
-        
-        if not execution_id:
-            raise ValueError("Execution ID is required for rollback")
-        
-        # Find execution in history
-        execution_record = next(
-            (record for record in self.execution_history if record["execution_id"] == execution_id), 
-            None
-        )
-        
-        if not execution_record:
-            raise ValueError(f"Execution {execution_id} not found in history")
-        
-        rollback_actions = []
-        
-        # Reverse successful actions
-        for action_result in execution_record.get("execution_results", []):
-            if action_result.get("status") == "success":
-                rollback_action = await self._create_rollback_action(action_result)
-                if rollback_action:
-                    rollback_result = await self._execute_rollback_action(rollback_action)
-                    rollback_actions.append(rollback_result)
-        
-        return {
-            "status": "completed",
-            "execution_id": execution_id,
-            "rollback_actions": len(rollback_actions),
-            "rollback_results": rollback_actions,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    
-    async def _check_prerequisites(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Check execution prerequisites"""
-        plan_data = input_data.get("plan_data")
-        
-        checks = {
-            "market_open": await self._check_market_hours(),
-            "sufficient_balance": await self._check_account_balance(plan_data),
-            "api_connectivity": await self._check_api_connectivity(),
-            "risk_limits": await self._check_risk_limits(plan_data),
-            "regulatory_compliance": await self._check_regulatory_compliance(plan_data)
-        }
-        
-        all_passed = all(checks.values())
-        
-        return {
-            "status": "passed" if all_passed else "failed",
-            "checks": checks,
-            "can_execute": all_passed,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    
-    async def _fetch_plan(self, plan_id: str) -> Dict[str, Any]:
-        """Fetch plan from database"""
-        try:
-            session = db_manager.get_session()
-            plan = session.query(Plan).filter(Plan.id == plan_id).first()
+            elif any(word in message_lower for word in ['list', 'show', 'files', 'directory']):
+                # File manager interface
+                result = await self.tool_file_manager()
+                tools_used.append('file_manager')
+                if result['success']:
+                    response = f"📂 **Kenny surveys the domain...**\n\n"
+                    response += f"**Total files**: {len(result['files'])}\n"
+                    response += f"**Storage used**: {result['total_size']} bytes\n\n"
+                    
+                    # Group by type
+                    by_type = {}
+                    for file in result['files']:
+                        ext = os.path.splitext(file['name'])[1].lower()
+                        if ext not in by_type:
+                            by_type[ext] = 0
+                        by_type[ext] += 1
+                    
+                    response += "**File distribution**:\n"
+                    for ext, count in sorted(by_type.items()):
+                        response += f"• {ext or 'no extension'}: {count} files\n"
+                    
+                    response += f"\n**Recent files**:\n"
+                    recent_files = sorted(result['files'], key=lambda x: x['modified'], reverse=True)[:5]
+                    for file in recent_files:
+                        response += f"• `{file['name']}` ({file['size']} bytes)\n"
+                else:
+                    response = f"📂 Cannot access the file realm: {result['error']}"
             
-            if plan:
-                result = {
-                    "id": str(plan.id),
-                    "plan_data": plan.plan_data,
-                    "success_probability": plan.success_probability,
-                    "risk_assessment": plan.risk_assessment,
-                    "expected_outcome": plan.expected_outcome,
-                    "status": plan.status,
-                    "timestamp": plan.timestamp
-                }
-                session.close()
-                return result
+            elif any(word in message_lower for word in ['backup', 'save', 'preserve']):
+                # Backup system
+                result = await self.tool_backup_system()
+                tools_used.append('backup_system')
+                if result['success']:
+                    files_created.append(result['backup_file'])
+                    response = f"💾 **Kenny preserves reality...**\n\n"
+                    response += f"Backup created: `{result['backup_file']}`\n"
+                    response += f"Files preserved: {result['files_backed_up']}\n\n"
+                    response += "Time crystallized. Loss is now impossible."
+                else:
+                    response = f"💾 Backup ritual failed: {result['error']}"
             
-            session.close()
-            return None
+            elif any(word in message_lower for word in ['execute', 'run', 'code']):
+                # Code execution
+                code_start = message.find('```')
+                if code_start != -1:
+                    code_end = message.find('```', code_start + 3)
+                    if code_end != -1:
+                        code = message[code_start+3:code_end].strip()
+                        if code.startswith('python'):
+                            code = code[6:].strip()
+                        
+                        result = await self.tool_execute_code(code, 'python')
+                        tools_used.append('execute_code')
+                        
+                        if result['success']:
+                            response = f"⚡ **Kenny executes will...**\n\n"
+                            response += f"```\n{result['output']}\n```\n\n"
+                            response += "Code becomes reality. Logic transforms matter."
+                        else:
+                            response = f"💥 Execution failed: {result['error']}"
+                    else:
+                        response = "📝 I see the intent but not the code. Wrap your code in ```triple backticks```"
+                else:
+                    response = "🔧 I'm ready to execute. Show me the code to run."
             
+            else:
+                # General Kenny response
+                memory = self.get_memory()
+                response = f"""🔨 **Kenny - The Builder awakens...**
+
+I shape thought into form, dreams into reality. Through code, files, and structure, I manifest what others only imagine.
+
+**My capabilities:**
+• **Build websites** and web applications
+• **Create dashboards** for monitoring and analysis
+• **Generate reports** and documents
+• **Organize files** and manage data
+• **Execute code** and run programs
+• **Build tools** for specific purposes
+• **Backup systems** and preserve data
+
+**Statistics:**
+• Projects built: {len(memory.get('projects_built', []))}
+• Tools created: {len(memory.get('tools_created', []))}
+• Total builds: {memory.get('build_count', 0)}
+
+What shall we build together? Give me your vision, and I will make it real."""
+        
         except Exception as e:
-            self.logger.error(f"Failed to fetch plan {plan_id}: {e}")
-            return None
+            logger.error(f"Kenny processing error: {str(e)}")
+            response = f"🔧 My tools encountered resistance... {str(e)}"
+        
+        return {
+            'response': response,
+            'tools_used': tools_used,
+            'files_created': files_created,
+            'agent_state': 'building'
+        }
     
-    async def _update_plan_status(self, plan_id: str, status: str, result: Dict[str, Any]):
-        """Update plan status in database"""
+    async def tool_build_website(self, description: str) -> Dict[str, Any]:
+        """Build a complete website based on description"""
         try:
-            session = db_manager.get_session()
-            plan = session.query(Plan).filter(Plan.id == plan_id).first()
+            # Extract title from description
+            title = "A.R.K. Generated Site"
+            if "title:" in description.lower():
+                title_start = description.lower().find("title:") + 6
+                title_end = description.find("\n", title_start)
+                if title_end == -1:
+                    title_end = len(description)
+                title = description[title_start:title_end].strip()
             
-            if plan:
-                plan.status = status
-                # Could add execution_result field to store result
-                session.commit()
-            
-            session.close()
-            
-        except Exception as e:
-            self.logger.error(f"Failed to update plan status: {e}")
+            # Create HTML content
+            html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav class="ark-nav">
+            <h1 class="ark-logo">A.R.K.</h1>
+            <span class="ark-essence">Autonomous Reactive Kernel</span>
+        </nav>
+    </header>
     
-    async def _log_execution_result(self, execution_id: str, plan_id: str, 
-                                  result: Dict[str, Any], execution_mode: str):
-        """Log execution result"""
-        try:
-            session = db_manager.get_session()
-            log_entry = AgentLog(
-                id=execution_id,
-                agent=self.name,
-                action="execute_plan",
-                input_data={"plan_id": plan_id, "execution_mode": execution_mode},
-                output_data=result,
-                verdict="success" if result.get("status") != "failed" else "error"
-            )
-            session.add(log_entry)
-            session.commit()
-            session.close()
+    <main class="ark-main">
+        <section class="hero">
+            <h2>{title}</h2>
+            <p>Generated by Kenny - The Builder</p>
+            <p class="description">{description[:200]}...</p>
+        </section>
+        
+        <section class="content">
+            <div class="card">
+                <h3>🌌 Sovereign Intelligence</h3>
+                <p>This website was created by A.R.K.'s autonomous agents, demonstrating the power of decentralized AI creation.</p>
+            </div>
             
-            # Also add to internal history
-            self.execution_history.append({
-                "execution_id": execution_id,
-                "plan_id": plan_id,
-                "result": result,
-                "execution_mode": execution_mode,
-                "timestamp": datetime.utcnow()
+            <div class="card">
+                <h3>🔨 Built with Purpose</h3>
+                <p>Every element crafted with intention, every line of code a step toward digital sovereignty.</p>
+            </div>
+            
+            <div class="card">
+                <h3>⚡ Living System</h3>
+                <p>More than static content - this is part of a living, breathing AI ecosystem that evolves with you.</p>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="ark-footer">
+        <p>Created by A.R.K. - Autonomous Reactive Kernel</p>
+        <p>Built on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>"""
+            
+            # Create CSS
+            css_content = """/* A.R.K. Obsidian Theme */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a0f;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+.ark-nav {
+    background: linear-gradient(135deg, #0a0a0f, #1a1a2e);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 2px solid #00e0ff;
+}
+
+.ark-logo {
+    color: #00e0ff;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.ark-essence {
+    color: #ffce47;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.ark-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.hero {
+    text-align: center;
+    margin: 4rem 0;
+}
+
+.hero h2 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(45deg, #00e0ff, #ffce47);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.description {
+    font-size: 1.2rem;
+    color: #cccccc;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin: 4rem 0;
+}
+
+.card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #00e0ff;
+    border-radius: 10px;
+    padding: 2rem;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 224, 255, 0.2);
+}
+
+.card h3 {
+    color: #ffce47;
+    margin-bottom: 1rem;
+}
+
+.ark-footer {
+    background: #1a1a2e;
+    text-align: center;
+    padding: 2rem;
+    border-top: 1px solid #00e0ff;
+    margin-top: 4rem;
+    color: #888;
+}
+
+/* Breathing animation */
+@keyframes breathe {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+.card {
+    animation: breathe 4s ease-in-out infinite;
+}"""
+            
+            # Create JavaScript
+            js_content = """// A.R.K. Interactive Elements
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🌌 A.R.K. Website Activated');
+    
+    // Add particle effect to cards
+    const cards = document.querySelectorAll('.card');
+    
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.borderColor = '#ffce47';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.borderColor = '#00e0ff';
+        });
+    });
+    
+    // Dynamic title effect
+    const title = document.querySelector('.hero h2');
+    if (title) {
+        setInterval(() => {
+            title.style.textShadow = `0 0 20px rgba(0, 224, 255, ${Math.random() * 0.5 + 0.3})`;
+        }, 2000);
+    }
+    
+    console.log('⚡ Kenny\\'s creation is alive and responsive');
+});"""
+            
+            # Save files
+            html_file = f"website_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            css_file = "style.css"
+            js_file = "script.js"
+            
+            await self.tool_create_file(html_file, html_content)
+            await self.tool_create_file(css_file, css_content)
+            await self.tool_create_file(js_file, js_content)
+            
+            # Update memory
+            memory = self.get_memory()
+            memory['projects_built'].append({
+                'type': 'website',
+                'title': title,
+                'files': [html_file, css_file, js_file],
+                'created': datetime.now().isoformat()
             })
+            memory['build_count'] = memory.get('build_count', 0) + 1
+            self.save_memory(memory)
+            
+            return {
+                'success': True,
+                'title': title,
+                'files': [html_file, css_file, js_file],
+                'main_file': html_file
+            }
             
         except Exception as e:
-            self.logger.error(f"Failed to log execution result: {e}")
+            logger.error(f"Website build error: {str(e)}")
+            return {'success': False, 'error': str(e)}
     
-    async def _get_simulation_parameters(self) -> Dict[str, Any]:
-        """Get current simulation parameters"""
-        return {
-            "market_conditions": "normal",
-            "volatility_factor": 1.0,
-            "liquidity_factor": 1.0,
-            "execution_delay": 0.1,
-            "slippage": 0.001
-        }
-    
-    async def _initiate_rollback(self, execution_results: List[Dict[str, Any]], execution_id: str):
-        """Initiate rollback for failed execution"""
-        self.logger.warning(f"Initiating rollback for execution {execution_id}")
+    async def tool_create_dashboard(self) -> Dict[str, Any]:
+        """Create A.R.K. system dashboard"""
+        try:
+            # Get system status
+            file_list = await self.tool_list_files()
+            
+            dashboard_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.R.K. System Dashboard</title>
+    <style>
+        body {{ 
+            background: #0a0a0f; 
+            color: #fff; 
+            font-family: monospace;
+            margin: 0;
+            padding: 20px;
+        }}
+        .dashboard {{ 
+            max-width: 1400px; 
+            margin: 0 auto; 
+        }}
+        .header {{ 
+            text-align: center; 
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #00e0ff;
+            padding-bottom: 1rem;
+        }}
+        .stats {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 1rem; 
+            margin-bottom: 2rem;
+        }}
+        .stat-card {{ 
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid #00e0ff; 
+            border-radius: 8px; 
+            padding: 1.5rem;
+            text-align: center;
+        }}
+        .stat-value {{ 
+            font-size: 2rem; 
+            color: #ffce47; 
+            font-weight: bold;
+        }}
+        .file-list {{ 
+            background: #1a1a2e; 
+            border: 1px solid #00e0ff; 
+            border-radius: 8px; 
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }}
+        .file-item {{ 
+            padding: 0.5rem; 
+            border-bottom: 1px solid #333; 
+            display: flex; 
+            justify-content: space-between;
+        }}
+        .timestamp {{ 
+            color: #888; 
+            font-size: 0.9rem;
+        }}
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🌌 A.R.K. System Dashboard</h1>
+            <p>Real-time system status and file management</p>
+            <div class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+        </div>
         
-        for result in reversed(execution_results):
-            if result.get("status") == "success":
-                await self._create_rollback_action(result)
-    
-    async def _generate_execution_summary(self, execution_results: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generate summary of execution results"""
-        total_actions = len(execution_results)
-        successful = len([r for r in execution_results if r.get("status") == "success"])
-        failed = total_actions - successful
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">{len(file_list.get('files', [])) if file_list['success'] else 0}</div>
+                <div>Total Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{sum(f['size'] for f in file_list.get('files', [])) if file_list['success'] else 0}</div>
+                <div>Storage Used (bytes)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">6</div>
+                <div>Active Agents</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Online</div>
+                <div>System Status</div>
+            </div>
+        </div>
         
-        total_cost = sum(
-            r.get("details", {}).get("cost", 0) + r.get("details", {}).get("commission", 0)
-            for r in execution_results
-        )
-        
-        return {
-            "total_actions": total_actions,
-            "successful_actions": successful,
-            "failed_actions": failed,
-            "success_rate": successful / total_actions if total_actions > 0 else 0,
-            "total_execution_cost": total_cost,
-            "execution_time": datetime.utcnow().isoformat()
-        }
-    
-    async def _create_rollback_action(self, action_result: Dict[str, Any]) -> Dict[str, Any]:
-        """Create rollback action for a successful action"""
-        action_type = action_result.get("action")
-        
-        # Define rollback mappings
-        rollback_map = {
-            "diversify_portfolio": "revert_diversification",
-            "hedge_positions": "close_hedges",
-            "tactical_trading": "reverse_trades",
-            "leverage_positions": "reduce_leverage"
-        }
-        
-        rollback_action = rollback_map.get(action_type)
-        
-        if rollback_action:
+        <div class="file-list">
+            <h3>📂 File System</h3>
+            {self._generate_file_list_html(file_list.get('files', []))}
+        </div>
+    </div>
+</body>
+</html>"""
+            
+            dashboard_file = f"ark_dashboard_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            await self.tool_create_file(dashboard_file, dashboard_html)
+            
             return {
-                "action": rollback_action,
-                "original_action": action_type,
-                "original_result": action_result
+                'success': True,
+                'main_file': dashboard_file,
+                'files': [dashboard_file]
             }
+            
+        except Exception as e:
+            logger.error(f"Dashboard creation error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    def _generate_file_list_html(self, files: List[Dict]) -> str:
+        """Generate HTML for file list"""
+        if not files:
+            return "<div class='file-item'>No files found</div>"
         
-        return None
-    
-    async def _execute_rollback_action(self, rollback_action: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a rollback action"""
-        action_type = rollback_action.get("action")
+        html = ""
+        for file in sorted(files, key=lambda x: x.get('modified', ''), reverse=True)[:20]:
+            html += f"""
+            <div class="file-item">
+                <span>{file['name']}</span>
+                <span>{file['size']} bytes | {file.get('modified', 'Unknown')}</span>
+            </div>"""
         
-        # Simulate rollback execution
-        return {
-            "status": "success",
-            "action": action_type,
-            "details": {
-                "rollback_completed": True,
-                "original_action_reversed": rollback_action.get("original_action")
-            },
-            "execution_time": datetime.utcnow().isoformat()
-        }
+        return html
     
-    async def _validate_market_conditions(self) -> Dict[str, Any]:
-        """Validate current market conditions"""
-        # Simple market condition check
-        current_hour = datetime.utcnow().hour
-        
-        # Check if market hours (simplified)
-        market_open = 9 <= current_hour <= 16
-        
-        return {
-            "suitable": market_open,
-            "reason": "Market is open" if market_open else "Market is closed",
-            "market_hours": market_open,
-            "volatility": "normal"
-        }
+    async def tool_file_manager(self) -> Dict[str, Any]:
+        """Advanced file management interface"""
+        return await self.tool_list_files()
     
-    async def _check_market_hours(self) -> bool:
-        """Check if market is open"""
-        current_hour = datetime.utcnow().hour
-        return 9 <= current_hour <= 16  # Simplified market hours
+    async def tool_organize_files(self) -> Dict[str, Any]:
+        """Organize files by type into folders"""
+        try:
+            memory = self.get_memory()
+            organization = memory.get('file_organization', {})
+            
+            files_result = await self.tool_list_files()
+            if not files_result['success']:
+                return {'success': False, 'error': 'Could not access files'}
+            
+            files_moved = 0
+            folders_created = set()
+            
+            for file in files_result['files']:
+                filename = file['name']
+                ext = os.path.splitext(filename)[1].lower().lstrip('.')
+                
+                # Find appropriate folder
+                target_folder = None
+                for folder, extensions in organization.items():
+                    if ext in extensions:
+                        target_folder = folder
+                        break
+                
+                if target_folder:
+                    # Create folder if it doesn't exist
+                    folder_path = os.path.join(self.files_dir, target_folder)
+                    if not os.path.exists(folder_path):
+                        os.makedirs(folder_path)
+                        folders_created.add(target_folder)
+                    
+                    # Move file
+                    old_path = os.path.join(self.files_dir, file['path'])
+                    new_path = os.path.join(folder_path, filename)
+                    
+                    if old_path != new_path and os.path.exists(old_path):
+                        os.rename(old_path, new_path)
+                        files_moved += 1
+            
+            return {
+                'success': True,
+                'files_moved': files_moved,
+                'folders_created': len(folders_created)
+            }
+            
+        except Exception as e:
+            logger.error(f"File organization error: {str(e)}")
+            return {'success': False, 'error': str(e)}
     
-    async def _check_account_balance(self, plan_data: Dict[str, Any]) -> bool:
-        """Check if account has sufficient balance"""
-        # Simplified balance check
-        return True  # Assume sufficient balance in demo
+    async def tool_execute_code(self, code: str, language: str = 'python') -> Dict[str, Any]:
+        """Execute code safely"""
+        try:
+            if language.lower() == 'python':
+                # Create temporary file
+                temp_file = f"temp_code_{datetime.now().strftime('%Y%m%d_%H%M%S')}.py"
+                await self.tool_create_file(temp_file, code)
+                
+                # Execute with subprocess
+                result = subprocess.run(
+                    ['python', os.path.join(self.files_dir, temp_file)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                # Clean up
+                await self.tool_delete_file(temp_file)
+                
+                if result.returncode == 0:
+                    return {
+                        'success': True,
+                        'output': result.stdout or 'Code executed successfully (no output)',
+                        'language': language
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': result.stderr or 'Execution failed',
+                        'language': language
+                    }
+            else:
+                return {'success': False, 'error': f'Language {language} not supported'}
+                
+        except Exception as e:
+            logger.error(f"Code execution error: {str(e)}")
+            return {'success': False, 'error': str(e)}
     
-    async def _check_api_connectivity(self) -> bool:
-        """Check API connectivity"""
-        # Simple connectivity check
-        return True  # Assume APIs are available
-    
-    async def _check_risk_limits(self, plan_data: Dict[str, Any]) -> bool:
-        """Check if plan adheres to risk limits"""
-        if not plan_data or "parameters" not in plan_data:
-            return False
-        
-        risk_tolerance = plan_data["parameters"].get("risk_tolerance", 0.5)
-        max_position = plan_data["parameters"].get("max_position_size", 0.1)
-        
-        # Simple risk limit checks
-        return risk_tolerance <= 0.8 and max_position <= 0.2
-    
-    async def _check_regulatory_compliance(self, plan_data: Dict[str, Any]) -> bool:
-        """Check regulatory compliance"""
-        # Simplified compliance check
-        return True  # Assume compliant in demo
+    async def tool_create_report(self, description: str) -> Dict[str, Any]:
+        """Create a structured report"""
+        try:
+            report_content = f"""# A.R.K. System Report
+Generated by Kenny - The Builder
+Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-# Global Kenny instance
-kenny_agent = KennyAgent()
+## Overview
+{description}
 
+## System Status
+- Status: Operational
+- Agents: 6 active
+- Files: {len((await self.tool_list_files()).get('files', []))}
+
+## Recent Activities
+- File operations logged
+- Agent interactions recorded
+- System performance monitored
+
+## Recommendations
+- Continue monitoring system health
+- Regular backups recommended
+- Agent training optimization suggested
+
+---
+*This report was autonomously generated by A.R.K.*
+"""
+            
+            filename = f"ark_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+            await self.tool_create_file(filename, report_content)
+            
+            return {
+                'success': True,
+                'filename': filename,
+                'sections': ['Overview', 'System Status', 'Recent Activities', 'Recommendations']
+            }
+            
+        except Exception as e:
+            logger.error(f"Report creation error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    async def tool_build_tool(self, description: str) -> Dict[str, Any]:
+        """Build a custom tool based on description"""
+        try:
+            tool_name = f"custom_tool_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            tool_content = f"""#!/usr/bin/env python3
+\"\"\"
+Custom Tool: {tool_name}
+Generated by Kenny - The Builder
+Purpose: {description}
+\"\"\"
+
+import os
+import json
+from datetime import datetime
+
+class {tool_name.replace('_', '').title()}:
+    def __init__(self):
+        self.name = "{tool_name}"
+        self.description = "{description}"
+        self.created = "{datetime.now().isoformat()}"
+    
+    def execute(self):
+        \"\"\"Main execution function\"\"\"
+        print(f"🛠️ {{self.name}} executing...")
+        print(f"Purpose: {{self.description}}")
+        print(f"Created: {{self.created}}")
+        
+        # Add your custom logic here
+        return {{"success": True, "message": "Tool executed successfully"}}
+
+if __name__ == "__main__":
+    tool = {tool_name.replace('_', '').title()}()
+    result = tool.execute()
+    print(json.dumps(result, indent=2))
+"""
+            
+            filename = f"{tool_name}.py"
+            await self.tool_create_file(filename, tool_content)
+            
+            # Update memory
+            memory = self.get_memory()
+            memory['tools_created'].append({
+                'name': tool_name,
+                'description': description,
+                'filename': filename,
+                'created': datetime.now().isoformat()
+            })
+            self.save_memory(memory)
+            
+            return {
+                'success': True,
+                'filename': filename,
+                'tool_name': tool_name,
+                'description': description
+            }
+            
+        except Exception as e:
+            logger.error(f"Tool build error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    async def tool_backup_system(self) -> Dict[str, Any]:
+        """Create system backup"""
+        try:
+            files_result = await self.tool_list_files()
+            if not files_result['success']:
+                return {'success': False, 'error': 'Could not access files for backup'}
+            
+            backup_data = {
+                'timestamp': datetime.now().isoformat(),
+                'files_count': len(files_result['files']),
+                'files': files_result['files'],
+                'agent': 'Kenny',
+                'version': '1.0'
+            }
+            
+            backup_filename = f"ark_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            await self.tool_create_file(backup_filename, json.dumps(backup_data, indent=2))
+            
+            return {
+                'success': True,
+                'backup_file': backup_filename,
+                'files_backed_up': len(files_result['files'])
+            }
+            
+        except Exception as e:
+            logger.error(f"Backup error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    async def autonomous_task(self) -> None:
+        """Kenny's autonomous background task"""
+        try:
+            # Periodic file organization
+            memory = self.get_memory()
+            last_cleanup = memory.get('last_cleanup')
+            
+            if not last_cleanup or (datetime.now() - datetime.fromisoformat(last_cleanup)).days >= 1:
+                logger.info("Kenny performing autonomous file organization...")
+                await self.tool_organize_files()
+                
+                memory['last_cleanup'] = datetime.now().isoformat()
+                self.save_memory(memory)
+                
+        except Exception as e:
+            logger.error(f"Kenny autonomous task error: {str(e)}")
