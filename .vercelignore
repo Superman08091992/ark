@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+
+# Build outputs
+.astro/
+.vercel/
+.output/
+dist/
+.turbo/
+
+# Development
+.env
+.env.local
+.env.*.local
+
+# System files
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Documentation (don't deploy to Vercel)
+*.md
+!README.md
+
+# Scripts (don't need on Vercel)
+*.sh
+ark-installer
+
+# Python requirements (not needed for frontend)
+requirements.txt
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Knowledge base (too large for deployment)
+knowledge_base/
+kyle_infinite_memory/
+agent_logs/
+
+# Temporary files
+tmp/
+temp/
+test-*/
