@@ -101,17 +101,8 @@ echo "║              ARK Unified Installer v${VERSION}                       �
 echo "║                                                                       ║"
 echo "╚═══════════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "Installation directory: $INSTALL_DIR"
-echo ""
 
-# Check if running as root
-if [ "$EUID" -ne 0 ] && [ ! -w "$(dirname "$INSTALL_DIR")" ]; then
-    echo "⚠️  This script needs sudo privileges for system installation"
-    echo "   Re-running with sudo..."
-    exec sudo bash "$0" "$@"
-fi
-
-# Detect OS
+# Detect OS FIRST
 if [ -f /etc/arch-release ]; then
     OS="arch"
 elif [ -f /etc/debian_version ]; then
@@ -127,7 +118,25 @@ else
 fi
 
 echo "📋 Detected OS: $OS"
+echo "📁 Installation directory: $INSTALL_DIR"
 echo ""
+
+# Check if running as root (skip on Android/Termux)
+if [ "$OS" != "android" ]; then
+    if [ "$EUID" -ne 0 ] && [ ! -w "$(dirname "$INSTALL_DIR")" ]; then
+        if command -v sudo &> /dev/null; then
+            echo "⚠️  This script needs sudo privileges for system installation"
+            echo "   Re-running with sudo..."
+            exec sudo bash "$0" "$@"
+        else
+            echo "⚠️  No sudo available and cannot write to $INSTALL_DIR"
+            echo "   Please either:"
+            echo "   1. Run with sudo: sudo $0 $@"
+            echo "   2. Install to user directory: $0 ~/ark"
+            exit 1
+        fi
+    fi
+fi
 
 # Get script directory (where files are extracted)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
