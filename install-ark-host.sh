@@ -45,18 +45,45 @@ fi
 
 echo "1️⃣  Installing dependencies..."
 
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check for bundled Node.js
+if [ -d "$SCRIPT_DIR/deps/node/nodejs" ]; then
+    echo "✅ Found bundled Node.js v20.10.0"
+    export PATH="$SCRIPT_DIR/deps/node/nodejs/bin:$PATH"
+    NODE_BUNDLED=true
+else
+    echo "⬇️  Node.js not bundled, will install from package manager..."
+    NODE_BUNDLED=false
+fi
+
+# Check for bundled Redis
+if [ -f "$SCRIPT_DIR/deps/redis/bin/redis-server" ]; then
+    echo "✅ Found bundled Redis v7.2.4"
+    REDIS_BUNDLED=true
+else
+    echo "⬇️  Redis not bundled, will install from package manager..."
+    REDIS_BUNDLED=false
+fi
+
+# Install missing dependencies
 case $OS in
     arch)
-        pacman -Sy --needed --noconfirm nodejs redis ollama
+        [ "$NODE_BUNDLED" = false ] && pacman -Sy --needed --noconfirm nodejs
+        [ "$REDIS_BUNDLED" = false ] && pacman -Sy --needed --noconfirm redis
+        pacman -Sy --needed --noconfirm ollama || echo "⚠️  Ollama not in repos, will download manually"
         ;;
     debian)
-        apt update
-        apt install -y nodejs npm redis-server
-        # Ollama
+        [ "$NODE_BUNDLED" = false ] && (apt update && apt install -y nodejs npm)
+        [ "$REDIS_BUNDLED" = false ] && (apt update && apt install -y redis-server)
+        # Ollama (always download, not bundled)
+        echo "⬇️  Installing Ollama..."
         curl -fsSL https://ollama.ai/install.sh | sh
         ;;
     macos)
-        brew install node redis
+        [ "$NODE_BUNDLED" = false ] && brew install node
+        [ "$REDIS_BUNDLED" = false ] && brew install redis
         brew install ollama
         ;;
     *)
@@ -64,6 +91,13 @@ case $OS in
         exit 1
         ;;
 esac
+
+# Copy bundled Redis to system if present
+if [ "$REDIS_BUNDLED" = true ]; then
+    echo "📦 Installing bundled Redis binaries..."
+    cp "$SCRIPT_DIR/deps/redis/bin/"* /usr/local/bin/
+    chmod +x /usr/local/bin/redis-*
+fi
 
 echo ""
 echo "2️⃣  Creating ARK host directory..."

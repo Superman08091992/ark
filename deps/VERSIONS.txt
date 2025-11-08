@@ -1,0 +1,23 @@
+ARK Dependencies
+
+Downloaded: 2025-11-08 22:04:03 UTC
+Architecture: x86_64
+
+Node.js: v20.10.0
+  Path: deps/node/nodejs/
+  Size: 168M
+  Binary: bin/node
+  NPM: bin/npm
+
+Redis: v7.2.4
+  Path: deps/redis/bin/
+  Size: 13M
+  Binaries: redis-server, redis-cli, redis-benchmark
+
+Total size: 181M
+
+Ollama and AI models are NOT included (too large for repo).
+Use one of these options:
+  1. Install via package manager: curl -fsSL https://ollama.ai/install.sh | sh
+  2. Download from releases: github.com/Superman08091992/ark/releases
+  3. Let installer download automatically during installation
