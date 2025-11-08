@@ -175,10 +175,98 @@ systemctl enable ark-redis ark-ollama
 systemctl start ark-redis ark-ollama
 
 echo ""
-echo "6️⃣  Downloading Ollama model (this may take a while)..."
+echo "6️⃣  Setting up AI models..."
 # Wait for ollama to start
 sleep 5
-ollama pull llama2 || echo "⚠️  Model download failed, will retry later"
+
+# Ask user which model to download
+echo ""
+echo "📦 Choose an AI model for ARK:"
+echo ""
+echo "  1) llama3.2:1b     - Fastest, smallest (1.3GB) [RECOMMENDED for testing]"
+echo "  2) llama3.2:3b     - Balanced (2GB)"
+echo "  3) qwen2.5:3b      - Better reasoning (2.5GB)"
+echo "  4) phi3:mini       - Microsoft, fast (2.4GB)"
+echo "  5) llama3.1:8b     - High quality (4.7GB)"
+echo "  6) mistral:7b      - Very capable (4.1GB)"
+echo "  7) codellama:7b    - Best for coding (3.8GB)"
+echo "  8) Skip            - Download manually later"
+echo ""
+
+# If running non-interactively, default to smallest
+if [ -t 0 ]; then
+    read -p "Enter choice [1-8] (default: 1): " model_choice
+    model_choice=${model_choice:-1}
+else
+    model_choice=1
+    echo "Non-interactive mode: Selecting option 1 (llama3.2:1b)"
+fi
+
+case $model_choice in
+    1)
+        MODEL="llama3.2:1b"
+        echo "⬇️  Downloading llama3.2:1b (1.3GB) - Fast and efficient..."
+        ;;
+    2)
+        MODEL="llama3.2:3b"
+        echo "⬇️  Downloading llama3.2:3b (2GB) - Balanced performance..."
+        ;;
+    3)
+        MODEL="qwen2.5:3b"
+        echo "⬇️  Downloading qwen2.5:3b (2.5GB) - Enhanced reasoning..."
+        ;;
+    4)
+        MODEL="phi3:mini"
+        echo "⬇️  Downloading phi3:mini (2.4GB) - Microsoft's efficient model..."
+        ;;
+    5)
+        MODEL="llama3.1:8b"
+        echo "⬇️  Downloading llama3.1:8b (4.7GB) - High quality responses..."
+        ;;
+    6)
+        MODEL="mistral:7b"
+        echo "⬇️  Downloading mistral:7b (4.1GB) - Very capable model..."
+        ;;
+    7)
+        MODEL="codellama:7b"
+        echo "⬇️  Downloading codellama:7b (3.8GB) - Optimized for code..."
+        ;;
+    8)
+        echo "⏭️  Skipping model download. Install later with:"
+        echo "   ollama pull llama3.2:1b"
+        MODEL=""
+        ;;
+    *)
+        echo "⚠️  Invalid choice, defaulting to llama3.2:1b..."
+        MODEL="llama3.2:1b"
+        ;;
+esac
+
+if [ -n "$MODEL" ]; then
+    echo ""
+    echo "📥 Downloading $MODEL..."
+    echo "   This may take a few minutes depending on your connection..."
+    echo ""
+    
+    if ollama pull "$MODEL"; then
+        echo "✅ Model $MODEL downloaded successfully!"
+        
+        # Update config to use this model
+        sed -i "s/- llama2/- $MODEL/" /opt/ark-host/config.yaml
+        
+        # Test the model
+        echo ""
+        echo "🧪 Testing model..."
+        if echo "Hello, test message" | ollama run "$MODEL" --verbose 2>/dev/null | head -1; then
+            echo "✅ Model is working!"
+        else
+            echo "⚠️  Model test inconclusive, but should work when needed"
+        fi
+    else
+        echo "⚠️  Model download failed. You can download it later with:"
+        echo "   ollama pull $MODEL"
+    fi
+fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════════════╗"
