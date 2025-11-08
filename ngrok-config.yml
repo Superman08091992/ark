@@ -1,0 +1,44 @@
+# ngrok Configuration for ARK Local Development
+# Place this file in your home directory: ~/.ngrok2/ngrok.yml
+# Or use with: ngrok start --config=ngrok-config.yml
+
+version: "2"
+authtoken: YOUR_NGROK_AUTH_TOKEN_HERE
+
+# Tunnels configuration
+tunnels:
+  # Main ARK web interface
+  ark-web:
+    proto: http
+    addr: 4321
+    bind_tls: true
+    inspect: true
+    subdomain: ark-dev  # Requires paid plan
+    
+  # Backend API (if running separately)
+  ark-api:
+    proto: http
+    addr: 3000
+    bind_tls: true
+    inspect: true
+    
+  # Optional: Kyle's memory service
+  kyle-memory:
+    proto: http
+    addr: 5000
+    bind_tls: true
+
+# Web interface settings
+web_addr: localhost:4040
+console_ui: true
+log_level: info
+log_format: term
+log: /var/log/ngrok.log
+
+# Region (choose closest to you)
+# Options: us, eu, ap, au, sa, jp, in
+region: us
+
+# Update check
+update_channel: stable
+update_check: true

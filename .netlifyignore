@@ -1,0 +1,71 @@
+# Netlify Ignore File
+# Excludes large/unnecessary files from deployment
+
+# Local storage directories (keep local only)
+knowledge_base/
+kyle_infinite_memory/
+agent_logs/
+mock_files/
+
+# Python environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node modules (Netlify installs them)
+node_modules/
+.pnpm-store/
+
+# Build outputs (regenerated)
+dist/
+.astro/
+.output/
+.vercel/
+.turbo/
+
+# Development files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Installer and scripts
+ark-installer
+create-ark-installer.sh
+install-ark-host.sh
+*.sh
+
+# Test files
+coverage/
+.nyc_output/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git files
+.git/
+.gitignore
+
+# Documentation (optional - remove if you want docs deployed)
+*.md
+!README.md
+
+# Requirements
+requirements.txt
