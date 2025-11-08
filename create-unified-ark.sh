@@ -192,17 +192,40 @@ fi
 
 echo ""
 echo "2️⃣  Creating installation directory..."
-mkdir -p "$INSTALL_DIR"/{bin,lib,data,config,logs}
+mkdir -p "$INSTALL_DIR"/{bin,lib,data,config,logs,docs}
 
 echo ""
 echo "3️⃣  Copying ARK files..."
-cp -r "$SCRIPT_DIR/lib"/* "$INSTALL_DIR/lib/" 2>/dev/null || true
-cp -r "$SCRIPT_DIR/data"/* "$INSTALL_DIR/data/" 2>/dev/null || true
-cp -r "$SCRIPT_DIR/docs"/* "$INSTALL_DIR/docs/" 2>/dev/null || true
+
+# Copy lib directory
+if [ -d "$SCRIPT_DIR/lib" ] && [ "$(ls -A "$SCRIPT_DIR/lib" 2>/dev/null)" ]; then
+    cp -r "$SCRIPT_DIR/lib"/* "$INSTALL_DIR/lib/"
+    echo "   ✅ Copied lib/ directory"
+else
+    echo "   ⚠️  Warning: lib/ directory empty or missing"
+    echo "   This may cause ARK to not function properly!"
+fi
+
+# Copy data directory
+if [ -d "$SCRIPT_DIR/data" ] && [ "$(ls -A "$SCRIPT_DIR/data" 2>/dev/null)" ]; then
+    cp -r "$SCRIPT_DIR/data"/* "$INSTALL_DIR/data/"
+    echo "   ✅ Copied data/ directory"
+else
+    echo "   ℹ️  Note: data/ directory empty (will be created on first run)"
+fi
+
+# Copy docs directory
+if [ -d "$SCRIPT_DIR/docs" ] && [ "$(ls -A "$SCRIPT_DIR/docs" 2>/dev/null)" ]; then
+    cp -r "$SCRIPT_DIR/docs"/* "$INSTALL_DIR/docs/"
+    echo "   ✅ Copied docs/ directory"
+else
+    echo "   ℹ️  Note: docs/ directory empty"
+fi
 
 # Copy dependencies if bundled
 if [ -d "$SCRIPT_DIR/deps" ]; then
     cp -r "$SCRIPT_DIR/deps" "$INSTALL_DIR/"
+    echo "   ✅ Copied bundled dependencies"
 fi
 
 echo ""
@@ -257,6 +280,26 @@ REDIS_EOF
 
 chmod +x "$INSTALL_DIR/bin/ark-redis"
 
+# Verify launcher scripts were created
+echo ""
+echo "🔍 Verifying launcher scripts..."
+LAUNCHERS_OK=true
+for script in ark ark-redis; do
+    if [ -f "$INSTALL_DIR/bin/$script" ] && [ -x "$INSTALL_DIR/bin/$script" ]; then
+        echo "   ✅ $script created and executable"
+    else
+        echo "   ❌ ERROR: $script missing or not executable"
+        LAUNCHERS_OK=false
+    fi
+done
+
+if [ "$LAUNCHERS_OK" = false ]; then
+    echo ""
+    echo "⚠️  Launcher script creation failed!"
+    echo "   Installation cannot continue."
+    exit 1
+fi
+
 echo ""
 echo "5️⃣  Creating configuration..."
 
@@ -288,13 +331,7 @@ echo "6️⃣  Setting up PATH..."
 # Add to PATH for current session
 export PATH="$INSTALL_DIR/bin:$PATH"
 
-# Offer to add to shell profile
-cat > /tmp/ark-path.sh << PROFILE_EOF
-# Add ARK to PATH
-export PATH="$INSTALL_DIR/bin:\$PATH"
-export ARK_HOME="$INSTALL_DIR"
-PROFILE_EOF
-
+# Detect shell and add to PATH
 SHELL_RC=""
 if [ -n "$BASH_VERSION" ]; then
     SHELL_RC="$HOME/.bashrc"
@@ -304,9 +341,76 @@ fi
 
 if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
     if ! grep -q "ARK_HOME" "$SHELL_RC"; then
-        cat /tmp/ark-path.sh >> "$SHELL_RC"
+        # Write directly to shell rc file (avoid /tmp issues on Termux)
+        cat >> "$SHELL_RC" << PROFILE_EOF
+
+# ARK Configuration
+export PATH="$INSTALL_DIR/bin:\$PATH"
+export ARK_HOME="$INSTALL_DIR"
+PROFILE_EOF
         echo "✅ Added ARK to $SHELL_RC"
+    else
+        echo "ℹ️  ARK already in $SHELL_RC"
     fi
+else
+    echo "⚠️  Could not detect shell RC file. Add manually:"
+    echo "   export PATH=\"$INSTALL_DIR/bin:\$PATH\""
+    echo "   export ARK_HOME=\"$INSTALL_DIR\""
+fi
+
+echo ""
+echo "7️⃣  Verifying installation..."
+
+# Check critical files exist
+REQUIRED_FILES=(
+    "$INSTALL_DIR/bin/ark"
+    "$INSTALL_DIR/bin/ark-redis"
+    "$INSTALL_DIR/config/ark.conf"
+)
+
+INSTALL_OK=true
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ -f "$file" ]; then
+        echo "   ✅ $(basename "$file")"
+    else
+        echo "   ❌ MISSING: $file"
+        INSTALL_OK=false
+    fi
+done
+
+# Check if bundled Node.js is accessible
+if [ -d "$INSTALL_DIR/deps/node/nodejs/bin" ]; then
+    if [ -x "$INSTALL_DIR/deps/node/nodejs/bin/node" ]; then
+        NODE_VERSION=$("$INSTALL_DIR/deps/node/nodejs/bin/node" --version 2>/dev/null || echo "unknown")
+        echo "   ✅ Node.js ($NODE_VERSION)"
+    else
+        echo "   ⚠️  Node.js binary not executable"
+        INSTALL_OK=false
+    fi
+fi
+
+# Check if bundled Redis is accessible
+if [ -d "$INSTALL_DIR/deps/redis/bin" ]; then
+    if [ -x "$INSTALL_DIR/deps/redis/bin/redis-server" ]; then
+        REDIS_VERSION=$("$INSTALL_DIR/deps/redis/bin/redis-server" --version 2>/dev/null | head -n1 || echo "unknown")
+        echo "   ✅ Redis ($REDIS_VERSION)"
+    else
+        echo "   ⚠️  Redis binary not executable"
+        INSTALL_OK=false
+    fi
+fi
+
+if [ "$INSTALL_OK" = false ]; then
+    echo ""
+    echo "⚠️  Installation incomplete! Some files are missing or not functional."
+    echo "   Please report this issue with the above error messages."
+    echo ""
+    echo "   Installation directory: $INSTALL_DIR"
+    echo "   You may need to:"
+    echo "   1. Check file permissions: ls -la $INSTALL_DIR"
+    echo "   2. Verify disk space: df -h"
+    echo "   3. Re-run installation"
+    exit 1
 fi
 
 echo ""
