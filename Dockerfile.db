@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install minimal dependencies
+RUN pip install --no-cache-dir sqlite3
+
+# Copy database initialization script
+COPY shared/db_init.py .
+COPY shared/models.py .
+
+# Initialize database and exit
+CMD ["python", "db_init.py"]

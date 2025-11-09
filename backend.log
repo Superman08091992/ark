@@ -1,0 +1,103 @@
+⚠️  nodemailer not installed - email features disabled
+📚 Kyle: Loaded 4 topic indices
+📚 Kyle: Loaded 16 catalog entries
+📚 Loaded 35 knowledge nodes
+🛠️  Agent Tools Loaded: 9 categories
+🌌 ARK Intelligent Backend v3.0 running on http://localhost:8000
+🧠 Intelligence: Adaptive Learning with Knowledge Compilation
+💾 Storage: /home/user/webapp/mock_files
+📚 Knowledge: /home/user/webapp/knowledge_base
+📡 CORS: Enabled
+
+🔧 Enhanced Features:
+   ✓ Large-scale memory (200 messages/agent)
+   ✓ Knowledge graph system
+   ✓ Topic extraction & categorization
+   ✓ Cross-agent knowledge sharing
+   ✓ Adaptive learning from interactions
+   ✓ Pattern learning & compilation
+   ✓ Persistent knowledge base
+   ✓ Deep user profiling
+   ✓ Context-aware responses
+   ✓ Historical memory recall
+
+📊 Current State:
+   Knowledge Nodes: 35
+   Conversations: 0
+   User Profiles: 0
+GET /
+GET /api/health
+GET /
+GET /favicon.ico
+GET /api/agents
+GET /favicon.ico
+GET /api/knowledge
+GET /favicon.ico
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+GET /
+GET /favicon.ico
+GET /api/health
+GET /api/agents
+GET /api/agents
+GET /api/agents
+GET /api/health
+GET /ws
+GET /ws
+GET /
+GET /favicon.ico
+GET /
+GET /favicon.ico
+💾 Auto-saved: 35 knowledge nodes, 0 conversations
+GET /api/health
+GET /api/agents
+GET /ws
+GET /api/conversations
+GET /ws
+GET /ws
+GET /ws
+GET /ws
+POST /api/chat
+⚠️  Kyle: Skipping low-value memory (importance: 23)
+⚠️  Kyle: Skipping low-value memory (importance: 23)
+GET /ws
+GET /ws
+GET /ws
+GET /ws
+💾 Auto-saved: 35 knowledge nodes, 1 conversations
+POST /api/chat
+⚠️  Kyle: Skipping low-value memory (importance: 0)
+⚠️  Kyle: Skipping low-value memory (importance: 0)
+GET /api/health
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations
+💾 Auto-saved: 35 knowledge nodes, 2 conversations

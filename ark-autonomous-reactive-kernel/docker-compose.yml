@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  ark-core:
+    build: 
+      context: .
+      dockerfile: Dockerfile.core
+    container_name: ark-core
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./files:/app/files
+    environment:
+      - DATABASE_URL=sqlite:///app/data/ark.db
+      - REDIS_URL=redis://redis:6379
+      - HARDWARE_TYPE=${HARDWARE:-dell}
+    depends_on:
+      - redis
+      - db-init
+    restart: unless-stopped
+
+  ark-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: ark-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://ark-core:8000
+    depends_on:
+      - ark-core
+    restart: unless-stopped
+
+  agents:
+    build:
+      context: .
+      dockerfile: Dockerfile.agents
+    container_name: ark-agents
+    volumes:
+      - ./data:/app/data
+      - ./files:/app/files
+    environment:
+      - DATABASE_URL=sqlite:///app/data/ark.db
+      - REDIS_URL=redis://redis:6379
+      - HARDWARE_TYPE=${HARDWARE:-dell}
+    depends_on:
+      - redis
+      - ark-core
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ark-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    container_name: ark-db-init
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///app/data/ark.db
+    restart: "no"
+
+volumes:
+  ark-data:
+    driver: local
