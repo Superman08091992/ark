@@ -271,9 +271,15 @@ ARK_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Set up environment
 export ARK_HOME
-export PATH="$ARK_HOME/deps/node/nodejs/bin:$PATH"
 
-# Start ARK backend
+# Try bundled Node.js first, but test if it works
+if [ -f "$ARK_HOME/deps/node/nodejs/bin/node" ]; then
+    if "$ARK_HOME/deps/node/nodejs/bin/node" --version &>/dev/null; then
+        export PATH="$ARK_HOME/deps/node/nodejs/bin:$PATH"
+    fi
+fi
+
+# Start ARK backend (will use bundled or system Node.js)
 cd "$ARK_HOME/lib"
 exec node intelligent-backend.cjs "$@"
 ARK_EOF
@@ -302,11 +308,16 @@ cat > "$INSTALL_DIR/bin/ark-redis" << 'REDIS_EOF'
 
 ARK_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Try bundled Redis first, but test if it works
 if [ -f "$ARK_HOME/deps/redis/bin/redis-server" ]; then
-    exec "$ARK_HOME/deps/redis/bin/redis-server" "$@"
-else
-    exec redis-server "$@"
+    # Test if bundled Redis is executable (right architecture)
+    if "$ARK_HOME/deps/redis/bin/redis-server" --version &>/dev/null; then
+        exec "$ARK_HOME/deps/redis/bin/redis-server" "$@"
+    fi
 fi
+
+# Fall back to system Redis
+exec redis-server "$@"
 REDIS_EOF
 
 chmod +x "$INSTALL_DIR/bin/ark-redis"
