@@ -18,6 +18,11 @@
 | 06 | Dependency Validation | [06-dependency-validation.sh](enhancements/06-dependency-validation.sh) | ✅ READY | 1c02dcc |
 | 07 | Backup & Restore | [07-backup-restore.sh](enhancements/07-backup-restore.sh) | ✅ READY | c1ed8f4 |
 | 08 | Update Mechanism | [08-update-mechanism.sh](enhancements/08-update-mechanism.sh) | ✅ READY | a5fa046 |
+| 09 | Ollama Auto-Installer | [09-ollama-auto-installer.sh](enhancements/09-ollama-auto-installer.sh) | ✅ READY | fd4263d |
+| 10 | Configuration Wizard | [10-configuration-wizard.sh](enhancements/10-configuration-wizard.sh) | ✅ READY | 77af4b4 |
+| 11 | Rollback on Failure | [11-rollback-on-failure.sh](enhancements/11-rollback-on-failure.sh) | ✅ READY | 81da428 |
+| 12 | Systemd Services | [12-systemd-services.sh](enhancements/12-systemd-services.sh) | ✅ READY | 2b99d6c |
+| 13 | Progress Bars | [13-progress-bars.sh](enhancements/13-progress-bars.sh) | ✅ READY | afdf263 |
 
 ---
 
@@ -25,8 +30,8 @@
 
 | # | Enhancement | Priority | ETA |
 |---|-------------|----------|-----|
-| 09 | Ollama Auto-Installer | HIGH | Next |
-| 10 | Configuration Wizard | HIGH | Next |
+| 14 | Network Access Setup | MEDIUM | Next |
+| 15 | Docker Container | MEDIUM | Next |
 | 11 | Configuration Wizard | HIGH | Next |
 | 12 | Systemd Services (Pi) | HIGH | Next |
 | 13 | Multi-Architecture Support | MEDIUM | Next |
@@ -38,10 +43,10 @@
 
 ## 📊 Statistics
 
-**Completed:** 8 / 33+ (24%)  
-**Lines of Code:** ~4,000+ lines  
-**Total Size:** ~60KB  
-**Commits:** 8 individual commits  
+**Completed:** 13 / 33+ (39%)  
+**Lines of Code:** ~8,500+ lines  
+**Total Size:** ~125KB  
+**Commits:** 13 individual commits  
 **All pushed to:** `master` branch  
 
 ---
