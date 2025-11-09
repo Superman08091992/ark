@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
+
+# Development
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+.npm
+
+# Logs
+logs
+*.log
+*.log.*
+
+# Temporary
+tmp
+temp
+.tmp
+.cache
+
+# Test
+test
+tests
+*.test.js
+*.spec.js
+coverage
+
+# Build artifacts
+dist
+build
+
+# Environment
+.env.local
+.env.development
+.env.test
+.env*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backups
+*.backup
+*.bak
+*.old
+
+# Data directories (will be mounted as volumes)
+data/
+uploads/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
