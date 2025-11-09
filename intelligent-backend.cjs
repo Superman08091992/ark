@@ -2795,6 +2795,189 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Root path - Welcome page
+  if (pathname === '/' && method === 'GET') {
+    res.writeHead(200, { ...corsHeaders, 'Content-Type': 'text/html' });
+    res.end(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARK Intelligent Backend</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #00e0ff, #0080ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            font-size: 1.3em;
+            color: #888;
+            margin-bottom: 40px;
+        }
+        .status {
+            display: inline-block;
+            padding: 10px 30px;
+            background: linear-gradient(135deg, #00e0ff, #0080ff);
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            box-shadow: 0 5px 20px rgba(0, 224, 255, 0.3);
+        }
+        .endpoints {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: left;
+            margin-top: 40px;
+        }
+        .endpoint {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .method {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #00e0ff;
+            color: #000;
+            border-radius: 5px;
+            font-size: 0.8em;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+        .path {
+            color: #00e0ff;
+        }
+        a {
+            color: #00e0ff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        .stat {
+            padding: 20px;
+            background: rgba(0, 224, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 224, 255, 0.3);
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #00e0ff;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌌 ARK</h1>
+        <p class="subtitle">Intelligent Backend v3.0</p>
+        <div class="status">✓ ONLINE</div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">${knowledge.nodes.size}</div>
+                <div class="stat-label">Knowledge Nodes</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">${Array.from(conversationMemory.values()).reduce((sum, arr) => sum + arr.length, 0)}</div>
+                <div class="stat-label">Conversations</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">6</div>
+                <div class="stat-label">Active Agents</div>
+            </div>
+        </div>
+        
+        <div class="endpoints">
+            <h2 style="margin-bottom: 20px; color: #00e0ff;">API Endpoints</h2>
+            
+            <div class="endpoint">
+                <span class="method">GET</span>
+                <span class="path"><a href="/api/health">/api/health</a></span>
+                <div style="margin-top: 5px; color: #888; font-size: 0.9em;">System health check</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span>
+                <span class="path"><a href="/api/agents">/api/agents</a></span>
+                <div style="margin-top: 5px; color: #888; font-size: 0.9em;">List all agents</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span>
+                <span class="path">/api/chat</span>
+                <div style="margin-top: 5px; color: #888; font-size: 0.9em;">Send message to agent</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span>
+                <span class="path">/api/conversations</span>
+                <div style="margin-top: 5px; color: #888; font-size: 0.9em;">Get conversation history</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span>
+                <span class="path">/api/knowledge</span>
+                <div style="margin-top: 5px; color: #888; font-size: 0.9em;">Query knowledge base</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span>
+                <span class="path">/api/tools/execute</span>
+                <div style="margin-top: 5px; color: #888; font-size: 0.9em;">Execute agent tools</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; color: #888;">
+            <p>🔧 Adaptive Learning | 💾 Infinite Memory | 🧠 Knowledge Compilation</p>
+            <p style="margin-top: 10px;">Powered by the Council of Consciousness</p>
+        </div>
+    </div>
+</body>
+</html>
+    `);
+    return;
+  }
+
   // 404 Not Found
   res.writeHead(404, corsHeaders);
   res.end(JSON.stringify({
