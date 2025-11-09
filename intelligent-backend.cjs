@@ -10,6 +10,7 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const { AgentToolRegistry } = require('./agent_tools.cjs');
+const { LatticeFederation } = require('./lattice-federation.cjs');
 
 const PORT = 8000;
 const FILES_DIR = path.join(__dirname, 'mock_files');
@@ -28,6 +29,35 @@ const KYLE_MEMORY_DIR = path.join(__dirname, 'kyle_infinite_memory');
 const MEMORY_SIZE = 200; // Store last 200 messages per agent (except Kyle who has infinite)
 const conversationMemory = new Map(); // agentName -> [{user, agent, time, topics, sentiment}]
 const userProfiles = new Map(); // userId -> {interests, personality, preferences, expertise}
+
+// ===== LATTICE FEDERATION INSTANCE =====
+let federationInstance = null;
+function getFederation() {
+  if (!federationInstance) {
+    const os = require('os');
+    const hostname = os.hostname();
+    
+    // Determine instance type based on hostname or environment
+    let instanceType = 'local';
+    if (process.env.ARK_INSTANCE_TYPE) {
+      instanceType = process.env.ARK_INSTANCE_TYPE;
+    } else if (hostname.includes('pi') || hostname.includes('raspberry')) {
+      instanceType = 'pi';
+    } else if (process.env.CLOUD_ENV || hostname.includes('cloud') || hostname.includes('aws') || hostname.includes('azure')) {
+      instanceType = 'cloud';
+    }
+    
+    federationInstance = new LatticeFederation({
+      instanceType,
+      listenPort: parseInt(process.env.FEDERATION_PORT || '9000'),
+      hubUrl: process.env.FEDERATION_HUB_URL || null,
+      federationMode: process.env.FEDERATION_MODE || 'p2p',
+      autoSync: process.env.FEDERATION_AUTO_SYNC !== 'false',
+      syncInterval: parseInt(process.env.FEDERATION_SYNC_INTERVAL || '60000')
+    });
+  }
+  return federationInstance;
+}
 
 // ===== REPETITION TRACKER =====
 class RepetitionTracker {
@@ -2725,6 +2755,231 @@ const server = http.createServer((req, res) => {
         
         res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // ===== FEDERATION API ENDPOINTS =====
+  
+  // Get federation status and info
+  if (pathname === '/api/federation/status' && method === 'GET') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        const info = federation.getInfo();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'ok',
+          info,
+          isRunning: federation.server !== null,
+          activePeers: Array.from(federation.activePeers),
+          stats: federation.stats
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // Start federation server
+  if (pathname === '/api/federation/start' && method === 'POST') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        await federation.startServer();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'started',
+          port: federation.listenPort,
+          instanceId: federation.instanceId,
+          instanceName: federation.instanceName
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // Stop federation server
+  if (pathname === '/api/federation/stop' && method === 'POST') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        await federation.stopServer();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'stopped' }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // Add a peer
+  if (pathname === '/api/federation/peers/add' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { peerUrl } = JSON.parse(body);
+        if (!peerUrl) {
+          res.writeHead(400, corsHeaders);
+          res.end(JSON.stringify({ error: 'peerUrl is required' }));
+          return;
+        }
+        
+        const federation = getFederation();
+        federation.addPeer(peerUrl);
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'added',
+          peerUrl,
+          totalPeers: federation.peers.length
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Remove a peer
+  if (pathname.startsWith('/api/federation/peers/') && method === 'DELETE') {
+    (async () => {
+      try {
+        const peerUrl = decodeURIComponent(pathname.split('/api/federation/peers/')[1]);
+        const federation = getFederation();
+        federation.removePeer(peerUrl);
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'removed',
+          peerUrl,
+          totalPeers: federation.peers.length
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // List peers
+  if (pathname === '/api/federation/peers' && method === 'GET') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          peers: federation.peers,
+          activePeers: Array.from(federation.activePeers),
+          totalPeers: federation.peers.length
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // Trigger manual sync with all peers
+  if (pathname === '/api/federation/sync' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = body ? JSON.parse(body) : {};
+        const { peerUrl } = data;
+        
+        const federation = getFederation();
+        let result;
+        
+        if (peerUrl) {
+          result = await federation.syncWithPeer(peerUrl);
+        } else {
+          result = await federation.syncWithAllPeers();
+        }
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'synced',
+          result
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Discover peers on local network
+  if (pathname === '/api/federation/discover' && method === 'POST') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        const discovered = await federation.discoverPeers();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'discovered',
+          peers: discovered,
+          totalPeers: federation.peers.length
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // Start auto-sync
+  if (pathname === '/api/federation/auto-sync/start' && method === 'POST') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        federation.startAutoSync();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'auto-sync started',
+          interval: federation.syncInterval
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // Stop auto-sync
+  if (pathname === '/api/federation/auto-sync/stop' && method === 'POST') {
+    (async () => {
+      try {
+        const federation = getFederation();
+        federation.stopAutoSync();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'auto-sync stopped' }));
       } catch (err) {
         res.writeHead(500, corsHeaders);
         res.end(JSON.stringify({ error: err.message }));

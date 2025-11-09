@@ -7,6 +7,7 @@
 const { program } = require('commander');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 
 // Paths
 const LATTICE_DIR = __dirname;
@@ -22,6 +23,39 @@ const LatticeManager = require(MANAGER_PATH);
 
 // Initialize manager
 const manager = new LatticeManager(path.join(LATTICE_DIR, 'lattice.db'));
+
+// Helper function to make API requests to backend
+async function apiRequest(method, path, body = null) {
+    const backendUrl = process.env.ARK_BACKEND_URL || 'http://localhost:8000';
+    return new Promise((resolve, reject) => {
+        const url = new URL(path, backendUrl);
+        const options = {
+            method,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+        
+        const req = http.request(url, options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    resolve(data);
+                }
+            });
+        });
+        
+        req.on('error', reject);
+        
+        if (body) {
+            req.write(JSON.stringify(body));
+        }
+        req.end();
+    });
+}
 
 program
     .name('ark-lattice')
@@ -302,6 +336,244 @@ program
             
             fs.writeFileSync(file, JSON.stringify(exportData, null, 2));
             console.log(`✅ Exported ${nodes.length} nodes to: ${file}`);
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// ===== FEDERATION COMMANDS =====
+
+// Federation command group
+const federation = program
+    .command('federation')
+    .description('Manage Code Lattice federation for distributed ARK instances');
+
+// Federation status
+federation
+    .command('status')
+    .description('Show federation status and info')
+    .action(async () => {
+        try {
+            const result = await apiRequest('GET', '/api/federation/status');
+            
+            console.log('\n🌐 Federation Status:\n');
+            console.log(`   Status: ${result.status}`);
+            console.log(`   Running: ${result.isRunning ? '✅ Yes' : '❌ No'}`);
+            console.log(`   Instance ID: ${result.info.instanceId}`);
+            console.log(`   Instance Name: ${result.info.instanceName}`);
+            console.log(`   Instance Type: ${result.info.instanceType}`);
+            console.log(`   Mode: ${result.info.federationMode}`);
+            console.log(`   Port: ${result.info.listenPort}`);
+            console.log(`   Auto-sync: ${result.info.autoSync ? '✅ Enabled' : '❌ Disabled'}`);
+            console.log(`   Sync Interval: ${result.info.syncInterval / 1000}s`);
+            console.log(`\n📊 Statistics:`);
+            console.log(`   Total Syncs: ${result.stats.totalSyncs}`);
+            console.log(`   Nodes Sent: ${result.stats.nodesSent}`);
+            console.log(`   Nodes Received: ${result.stats.nodesReceived}`);
+            console.log(`   Conflicts Resolved: ${result.stats.conflictsResolved}`);
+            console.log(`\n🔗 Peers:`);
+            console.log(`   Total: ${result.info.peers.length}`);
+            console.log(`   Active: ${result.activePeers.length}`);
+            
+            if (result.info.peers.length > 0) {
+                console.log('\n   Configured Peers:');
+                result.info.peers.forEach(peer => {
+                    const isActive = result.activePeers.includes(peer);
+                    console.log(`   ${isActive ? '✅' : '⚪'} ${peer}`);
+                });
+            }
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Start federation server
+federation
+    .command('start')
+    .description('Start federation server')
+    .action(async () => {
+        try {
+            const result = await apiRequest('POST', '/api/federation/start');
+            
+            console.log(`\n✅ Federation server started`);
+            console.log(`   Instance: ${result.instanceName}`);
+            console.log(`   Port: ${result.port}`);
+            console.log(`   Instance ID: ${result.instanceId}\n`);
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Stop federation server
+federation
+    .command('stop')
+    .description('Stop federation server')
+    .action(async () => {
+        try {
+            const result = await apiRequest('POST', '/api/federation/stop');
+            console.log(`\n✅ Federation server stopped\n`);
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Add peer
+federation
+    .command('add-peer <url>')
+    .description('Add a peer to the federation')
+    .action(async (url) => {
+        try {
+            const result = await apiRequest('POST', '/api/federation/peers/add', { peerUrl: url });
+            
+            console.log(`\n✅ Peer added: ${result.peerUrl}`);
+            console.log(`   Total peers: ${result.totalPeers}\n`);
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Remove peer
+federation
+    .command('remove-peer <url>')
+    .description('Remove a peer from the federation')
+    .action(async (url) => {
+        try {
+            const result = await apiRequest('DELETE', `/api/federation/peers/${encodeURIComponent(url)}`);
+            
+            console.log(`\n✅ Peer removed: ${result.peerUrl}`);
+            console.log(`   Total peers: ${result.totalPeers}\n`);
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// List peers
+federation
+    .command('list-peers')
+    .description('List all configured peers')
+    .action(async () => {
+        try {
+            const result = await apiRequest('GET', '/api/federation/peers');
+            
+            console.log(`\n🔗 Configured Peers (${result.totalPeers}):\n`);
+            
+            if (result.peers.length === 0) {
+                console.log('   No peers configured\n');
+            } else {
+                result.peers.forEach((peer, i) => {
+                    const isActive = result.activePeers.includes(peer);
+                    console.log(`   ${i + 1}. ${isActive ? '✅' : '⚪'} ${peer}`);
+                });
+                console.log('');
+            }
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Sync with peers
+federation
+    .command('sync')
+    .description('Synchronize with all peers')
+    .option('-p, --peer <url>', 'Sync with specific peer only')
+    .action(async (options) => {
+        try {
+            const body = options.peer ? { peerUrl: options.peer } : {};
+            const result = await apiRequest('POST', '/api/federation/sync', body);
+            
+            console.log(`\n✅ Synchronization complete`);
+            console.log(`   Status: ${result.status}\n`);
+            
+            if (result.result) {
+                console.log('📊 Sync Results:');
+                if (Array.isArray(result.result)) {
+                    result.result.forEach(r => {
+                        console.log(`\n   Peer: ${r.peer}`);
+                        console.log(`   Success: ${r.success ? '✅' : '❌'}`);
+                        if (r.nodesSent !== undefined) console.log(`   Nodes Sent: ${r.nodesSent}`);
+                        if (r.nodesReceived !== undefined) console.log(`   Nodes Received: ${r.nodesReceived}`);
+                        if (r.error) console.log(`   Error: ${r.error}`);
+                    });
+                } else {
+                    console.log(`   ${JSON.stringify(result.result, null, 2)}`);
+                }
+                console.log('');
+            }
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Discover peers
+federation
+    .command('discover')
+    .description('Discover peers on local network')
+    .action(async () => {
+        try {
+            console.log('\n🔍 Discovering peers on local network...\n');
+            
+            const result = await apiRequest('POST', '/api/federation/discover');
+            
+            console.log(`✅ Discovery complete`);
+            console.log(`   Found: ${result.peers.length} peer(s)`);
+            console.log(`   Total peers: ${result.totalPeers}\n`);
+            
+            if (result.peers.length > 0) {
+                console.log('Discovered Peers:');
+                result.peers.forEach((peer, i) => {
+                    console.log(`   ${i + 1}. ${peer}`);
+                });
+                console.log('');
+            }
+            
+            process.exit(0);
+        } catch (error) {
+            console.error('❌ Error:', error.message);
+            process.exit(1);
+        }
+    });
+
+// Start auto-sync
+federation
+    .command('auto-sync')
+    .description('Control automatic synchronization')
+    .option('--start', 'Start auto-sync')
+    .option('--stop', 'Stop auto-sync')
+    .action(async (options) => {
+        try {
+            if (options.start) {
+                const result = await apiRequest('POST', '/api/federation/auto-sync/start');
+                console.log(`\n✅ Auto-sync started`);
+                console.log(`   Interval: ${result.interval / 1000}s\n`);
+            } else if (options.stop) {
+                const result = await apiRequest('POST', '/api/federation/auto-sync/stop');
+                console.log(`\n✅ Auto-sync stopped\n`);
+            } else {
+                console.log('\n⚠️  Please specify --start or --stop\n');
+            }
+            
             process.exit(0);
         } catch (error) {
             console.error('❌ Error:', error.message);
