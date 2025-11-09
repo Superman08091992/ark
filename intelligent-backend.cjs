@@ -2605,6 +2605,128 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ===== CODE LATTICE ENDPOINTS =====
+  
+  // Get Code Lattice stats
+  if (pathname === '/api/lattice/stats' && method === 'GET') {
+    try {
+      const stats = await toolRegistry.lattice.getStats();
+      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(stats));
+    } catch (err) {
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Generate code via Code Lattice (Kenny)
+  if (pathname === '/api/lattice/generate' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { requirements, options } = data;
+        
+        // Kenny generates the code
+        const genResult = await toolRegistry.lattice.generateCode(requirements, options || {});
+        
+        // HRM validates it
+        const valResult = await toolRegistry.lattice.validateCode(genResult);
+        
+        // Joey documents it
+        const docResult = await toolRegistry.lattice.documentCode(genResult);
+        
+        // Aletheia reflects on it
+        const reflection = await toolRegistry.lattice.reflectOnGeneration(genResult, valResult);
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          generation: genResult,
+          validation: valResult,
+          documentation: docResult,
+          reflection
+        }));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Get node recommendations (Kyle)
+  if (pathname === '/api/lattice/recommend' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { intent, context } = data;
+        
+        const result = await toolRegistry.lattice.recommendNodes(intent, context || {});
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Query nodes
+  if (pathname === '/api/lattice/query' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { criteria, limit } = data;
+        
+        const result = await toolRegistry.lattice.queryNodesForTask(criteria, limit || 10);
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Explain a node (Joey)
+  if (pathname.startsWith('/api/lattice/explain/') && method === 'GET') {
+    try {
+      const nodeId = pathname.split('/').pop();
+      const result = await toolRegistry.lattice.explainNode(nodeId);
+      
+      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Optimize node usage (ID)
+  if (pathname === '/api/lattice/optimize' && method === 'GET') {
+    try {
+      const result = await toolRegistry.lattice.optimizeNodeUsage();
+      
+      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // Chat with agent (supports both /api/chat and /api/chat/:agentName)
   if ((pathname === '/api/chat' || pathname.startsWith('/api/chat/')) && method === 'POST') {
     // Extract agent name from URL path if present (e.g., /api/chat/Kyle)

@@ -16,6 +16,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
+const { getLatticeInterface } = require('./code-lattice-agent-integration.cjs');
 
 // ===== EMAIL CAPABILITIES =====
 class EmailTool {
@@ -751,6 +752,7 @@ class AgentToolRegistry {
     this.image = new ImageTool();
     this.calendar = new CalendarTool();
     this.llm = new LLMTool();
+    this.lattice = getLatticeInterface(); // Code Lattice integration
   }
 
   async executeTool(category, method, params) {
@@ -796,7 +798,11 @@ class AgentToolRegistry {
       data: ['analyzeNumbers', 'parseCSV'],
       image: ['generatePlaceholder', 'generateQRCode'],
       calendar: ['createEvent', 'getCurrentTime'],
-      llm: ['queryOllama', 'researchTopicWithSources', 'extractKnowledge']
+      llm: ['queryOllama', 'researchTopicWithSources', 'extractKnowledge'],
+      lattice: ['getStats', 'generateCode', 'queryNodesForTask', 'recommendNodes', 
+                'contextAwareQuery', 'documentCode', 'explainNode', 'validateCode', 
+                'reviewNodeAddition', 'reflectOnGeneration', 'optimizeNodeUsage', 
+                'trackUsagePattern']
     };
   }
 }
