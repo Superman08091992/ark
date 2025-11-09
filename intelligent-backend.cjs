@@ -2609,14 +2609,16 @@ const server = http.createServer((req, res) => {
   
   // Get Code Lattice stats
   if (pathname === '/api/lattice/stats' && method === 'GET') {
-    try {
-      const stats = await toolRegistry.lattice.getStats();
-      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(stats));
-    } catch (err) {
-      res.writeHead(500, corsHeaders);
-      res.end(JSON.stringify({ error: err.message }));
-    }
+    (async () => {
+      try {
+        const stats = await toolRegistry.lattice.getStats();
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(stats));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
     return;
   }
 
@@ -2700,30 +2702,34 @@ const server = http.createServer((req, res) => {
 
   // Explain a node (Joey)
   if (pathname.startsWith('/api/lattice/explain/') && method === 'GET') {
-    try {
-      const nodeId = pathname.split('/').pop();
-      const result = await toolRegistry.lattice.explainNode(nodeId);
-      
-      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(result));
-    } catch (err) {
-      res.writeHead(500, corsHeaders);
-      res.end(JSON.stringify({ error: err.message }));
-    }
+    (async () => {
+      try {
+        const nodeId = pathname.split('/').pop();
+        const result = await toolRegistry.lattice.explainNode(nodeId);
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
     return;
   }
 
   // Optimize node usage (ID)
   if (pathname === '/api/lattice/optimize' && method === 'GET') {
-    try {
-      const result = await toolRegistry.lattice.optimizeNodeUsage();
-      
-      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(result));
-    } catch (err) {
-      res.writeHead(500, corsHeaders);
-      res.end(JSON.stringify({ error: err.message }));
-    }
+    (async () => {
+      try {
+        const result = await toolRegistry.lattice.optimizeNodeUsage();
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, corsHeaders);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
     return;
   }
 
