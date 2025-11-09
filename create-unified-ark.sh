@@ -143,51 +143,82 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "1️⃣  Installing dependencies..."
 
-# Check for bundled Node.js
+# Check for bundled Node.js and test if it works
+USE_BUNDLED_NODE=false
 if [ -d "$SCRIPT_DIR/deps/node/nodejs" ]; then
-    echo "✅ Using bundled Node.js"
-    NODE_PATH="$SCRIPT_DIR/deps/node/nodejs/bin"
-else
-    echo "⬇️  Installing Node.js..."
-    case $OS in
-        debian|android)
-            if command -v apt-get &> /dev/null; then
-                apt-get update && apt-get install -y nodejs npm
-            elif command -v pkg &> /dev/null; then
-                pkg install -y nodejs
-            fi
-            ;;
-        arch)
-            pacman -Sy --needed --noconfirm nodejs npm
-            ;;
-        macos)
-            brew install node
-            ;;
-    esac
-    NODE_PATH=$(which node | xargs dirname)
+    # Test if bundled Node.js can execute
+    if "$SCRIPT_DIR/deps/node/nodejs/bin/node" --version &>/dev/null; then
+        echo "✅ Using bundled Node.js"
+        NODE_PATH="$SCRIPT_DIR/deps/node/nodejs/bin"
+        USE_BUNDLED_NODE=true
+    else
+        echo "⚠️  Bundled Node.js incompatible with this architecture"
+        echo "   Will install from package manager instead..."
+    fi
 fi
 
-# Check for bundled Redis
+# Install Node.js if bundled version doesn't work
+if [ "$USE_BUNDLED_NODE" = false ]; then
+    if command -v node &>/dev/null; then
+        echo "✅ Using system Node.js ($(node --version))"
+        NODE_PATH=$(which node | xargs dirname)
+    else
+        echo "⬇️  Installing Node.js..."
+        case $OS in
+            debian)
+                apt-get update && apt-get install -y nodejs npm
+                ;;
+            android)
+                pkg install -y nodejs
+                ;;
+            arch)
+                pacman -Sy --needed --noconfirm nodejs npm
+                ;;
+            macos)
+                brew install node
+                ;;
+        esac
+        NODE_PATH=$(which node | xargs dirname)
+    fi
+fi
+
+# Check for bundled Redis and test if it works
+USE_BUNDLED_REDIS=false
 if [ -d "$SCRIPT_DIR/deps/redis/bin" ]; then
-    echo "✅ Using bundled Redis"
-    REDIS_PATH="$SCRIPT_DIR/deps/redis/bin"
-else
-    echo "⬇️  Installing Redis..."
-    case $OS in
-        debian)
-            apt-get update && apt-get install -y redis-server
-            ;;
-        android)
-            pkg install -y redis
-            ;;
-        arch)
-            pacman -Sy --needed --noconfirm redis
-            ;;
-        macos)
-            brew install redis
-            ;;
-    esac
-    REDIS_PATH=$(which redis-server | xargs dirname 2>/dev/null || echo "")
+    # Test if bundled Redis can execute
+    if "$SCRIPT_DIR/deps/redis/bin/redis-server" --version &>/dev/null; then
+        echo "✅ Using bundled Redis"
+        REDIS_PATH="$SCRIPT_DIR/deps/redis/bin"
+        USE_BUNDLED_REDIS=true
+    else
+        echo "⚠️  Bundled Redis incompatible with this architecture"
+        echo "   Will install from package manager instead..."
+    fi
+fi
+
+# Install Redis if bundled version doesn't work
+if [ "$USE_BUNDLED_REDIS" = false ]; then
+    if command -v redis-server &>/dev/null; then
+        echo "✅ Using system Redis"
+        REDIS_PATH=$(which redis-server | xargs dirname)
+    else
+        echo "⬇️  Installing Redis..."
+        case $OS in
+            debian)
+                apt-get update && apt-get install -y redis-server
+                ;;
+            android)
+                pkg install -y redis
+                ;;
+            arch)
+                pacman -Sy --needed --noconfirm redis
+                ;;
+            macos)
+                brew install redis
+                ;;
+        esac
+        REDIS_PATH=$(which redis-server | xargs dirname 2>/dev/null || echo "")
+    fi
 fi
 
 echo ""
