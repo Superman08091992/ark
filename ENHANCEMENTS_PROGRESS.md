@@ -21,6 +21,13 @@
 | 09 | Ollama Auto-Installer | [09-ollama-auto-installer.sh](enhancements/09-ollama-auto-installer.sh) | ✅ READY | fd4263d |
 | 10 | Configuration Wizard | [10-configuration-wizard.sh](enhancements/10-configuration-wizard.sh) | ✅ READY | 77af4b4 |
 | 11 | Rollback on Failure | [11-rollback-on-failure.sh](enhancements/11-rollback-on-failure.sh) | ✅ READY | 81da428 |
+| 12 | Systemd Services | [12-systemd-services.sh](enhancements/12-systemd-services.sh) | ✅ READY | 536151d |
+| 13 | Multi-Architecture Support | [13-multi-architecture-support.sh](enhancements/13-multi-architecture-support.sh) | ✅ READY | 9c3ff82 |
+| 14 | Progress Bars | [14-progress-bars.sh](enhancements/14-progress-bars.sh) | ✅ READY | 62d4985 |
+| 15 | Docker Container | [15-docker-container/](enhancements/15-docker-container/) | ✅ READY | 1734f86 |
+| 09 | Ollama Auto-Installer | [09-ollama-auto-installer.sh](enhancements/09-ollama-auto-installer.sh) | ✅ READY | fd4263d |
+| 10 | Configuration Wizard | [10-configuration-wizard.sh](enhancements/10-configuration-wizard.sh) | ✅ READY | 77af4b4 |
+| 11 | Rollback on Failure | [11-rollback-on-failure.sh](enhancements/11-rollback-on-failure.sh) | ✅ READY | 81da428 |
 | 12 | Systemd Services | [12-systemd-services.sh](enhancements/12-systemd-services.sh) | ✅ READY | 2b99d6c |
 | 13 | Progress Bars | [13-progress-bars.sh](enhancements/13-progress-bars.sh) | ✅ READY | afdf263 |
 | 14 | Network Access Setup | [14-network-access-setup.sh](enhancements/14-network-access-setup.sh) | ✅ READY | 9d5f22a |
@@ -34,9 +41,9 @@
 
 | # | Enhancement | Priority | ETA |
 |---|-------------|----------|-----|
-| 18 | Multi-Architecture Support | MEDIUM | Next |
-| 19 | Authentication System | HIGH | Next |
-| 20 | API Documentation | HIGH | Next |
+| 16 | Network Access Setup | MEDIUM | Next |
+| 17 | Rate Limiting | MEDIUM | Next |
+| 18 | Web-Based Installer | LOW | Next |
 
 ---
 
