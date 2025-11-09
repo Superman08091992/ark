@@ -1,0 +1,208 @@
+/**
+ * ARK Chat Plugin Styles
+ * For WordPress integration at 1true.org
+ */
+
+/* ===== Embed Container ===== */
+.ark-chat-embed-container {
+    position: relative;
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #0a0a0f;
+    border-radius: 20px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+}
+
+.ark-chat-iframe {
+    display: block;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(0, 224, 255, 0.2);
+}
+
+/* ===== Loading State ===== */
+.ark-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 10;
+    color: #00e0ff;
+}
+
+.ark-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #00e0ff;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: ark-spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes ark-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.ark-loading p {
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Floating Chat Button ===== */
+.ark-floating-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #00e0ff 0%, #0080ff 100%);
+    border-radius: 50px;
+    box-shadow: 0 4px 20px rgba(0, 224, 255, 0.4);
+    text-decoration: none;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    gap: 10px;
+}
+
+.ark-floating-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 30px rgba(0, 224, 255, 0.6);
+    color: white;
+    text-decoration: none;
+}
+
+.ark-floating-button:active {
+    transform: translateY(-1px);
+}
+
+.ark-button-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.ark-button-text {
+    display: inline-block;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Pulse Animation ===== */
+@keyframes ark-pulse {
+    0% {
+        box-shadow: 0 4px 20px rgba(0, 224, 255, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 30px rgba(0, 224, 255, 0.7);
+    }
+    100% {
+        box-shadow: 0 4px 20px rgba(0, 224, 255, 0.4);
+    }
+}
+
+.ark-floating-button {
+    animation: ark-pulse 2s ease-in-out infinite;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    .ark-chat-embed-container {
+        margin: 20px auto;
+        padding: 15px;
+        border-radius: 15px;
+    }
+    
+    .ark-chat-iframe {
+        height: 600px !important;
+        border-radius: 10px;
+    }
+    
+    .ark-floating-button {
+        padding: 12px 16px;
+        font-size: 14px;
+        border-radius: 40px;
+    }
+    
+    .ark-button-icon {
+        font-size: 20px;
+    }
+    
+    .ark-button-text {
+        display: none; /* Hide text on mobile, show icon only */
+    }
+    
+    /* Make button circular on mobile */
+    .ark-floating-button {
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .ark-chat-iframe {
+        height: 500px !important;
+    }
+}
+
+/* ===== Admin Styles ===== */
+.wrap h1 {
+    color: #00e0ff;
+    text-shadow: 0 0 10px rgba(0, 224, 255, 0.3);
+}
+
+.wrap code {
+    background: #0a0a0f;
+    color: #00e0ff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-family: 'Courier New', monospace;
+}
+
+/* ===== Dark Mode Support ===== */
+@media (prefers-color-scheme: dark) {
+    .ark-chat-embed-container {
+        background: #0a0a0f;
+    }
+    
+    .ark-loading p {
+        color: #00e0ff;
+    }
+}
+
+/* ===== Accessibility ===== */
+.ark-floating-button:focus {
+    outline: 2px solid #00e0ff;
+    outline-offset: 3px;
+}
+
+.ark-chat-iframe:focus {
+    outline: 2px solid #00e0ff;
+    outline-offset: 5px;
+}
+
+/* ===== Print Styles ===== */
+@media print {
+    .ark-floating-chat,
+    .ark-floating-button {
+        display: none !important;
+    }
+}
+
+/* ===== High Contrast Mode ===== */
+@media (prefers-contrast: high) {
+    .ark-floating-button {
+        background: #00e0ff;
+        color: #000;
+        border: 2px solid #fff;
+    }
+    
+    .ark-chat-iframe {
+        border: 2px solid #00e0ff;
+    }
+}
