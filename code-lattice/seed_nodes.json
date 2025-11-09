@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "schema_version": "3.3.0",
+    "compiled_at": "2025-11-09T07:30:00Z",
+    "category": "software_design_nodes",
+    "total_nodes": 210
+  },
+  "topics": [
+    {
+      "name": "C_Language",
+      "description": "Procedural systems programming base layer.",
+      "nodes": [
+        {
+          "id": "c_template_hello",
+          "type": "template_node",
+          "value": "Basic Hello World in ANSI C.",
+          "files": ["main.c"],
+          "content": "#include <stdio.h>\nint main(){printf(\"Hello, A.R.K.\\n\");return 0;}"
+        },
+        {
+          "id": "c_pattern_mvc",
+          "type": "pattern_node",
+          "value": "Model–View–Controller architecture in C using structs and function pointers.",
+          "dependencies": ["stdio", "stdlib"],
+          "examples": ["model.h", "controller.c", "view.c"]
+        },
+        {
+          "id": "c_lib_io",
+          "type": "library_node",
+          "value": "File I/O wrapper functions (open, read, write, close) using stdio.h."
+        },
+        {
+          "id": "c_compiler_make",
+          "type": "compiler_node",
+          "value": "Makefile template for GCC builds.",
+          "content": "CC=gcc\nCFLAGS=-Wall -O2\nall: main"
+        }
+      ]
+    },
+    {
+      "name": "Cplusplus",
+      "description": "Object-oriented and high-performance systems design.",
+      "nodes": [
+        {
+          "id": "cpp_class_template",
+          "type": "component_node",
+          "value": "Basic class template with constructor and destructor.",
+          "content": "class Example { public: Example(); ~Example(); };"
+        },
+        {
+          "id": "cpp_pattern_singleton",
+          "type": "pattern_node",
+          "value": "Thread-safe singleton using static instance method."
+        },
+        {
+          "id": "cpp_lib_sdl2_init",
+          "type": "library_node",
+          "value": "SDL2 window initialization code."
+        },
+        {
+          "id": "cpp_build_cmake",
+          "type": "compiler_node",
+          "value": "CMakeLists.txt template for cross-platform builds."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "ark-code-lattice",
+  "version": "1.0.0",
+  "description": "ARK Code Lattice System",
+  "main": "lattice-manager.js",
+  "dependencies": {
+    "commander": "^14.0.2",
+    "sqlite3": "^5.1.6"
+  }
+}

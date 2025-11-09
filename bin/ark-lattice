@@ -1,0 +1,3 @@
+#!/bin/bash
+# ARK Code Lattice CLI Wrapper
+cd "$(dirname "$0")/../code-lattice" && node cli.js "$@"
