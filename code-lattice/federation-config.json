@@ -1,0 +1,12 @@
+{
+  "instanceId": "4559d3be50528086730e9f6d7daf4abacc0584109567d05af4ec6ab65c1961d0",
+  "instanceName": "ARK-local-4559d3be",
+  "instanceType": "local",
+  "federationMode": "p2p",
+  "hubUrl": null,
+  "listenPort": 9000,
+  "peers": [
+    "http://test-peer:9000"
+  ],
+  "savedAt": "2025-11-09T10:02:18.642Z"
+}
