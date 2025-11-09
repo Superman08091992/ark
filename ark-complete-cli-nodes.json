@@ -1,0 +1,1108 @@
+{
+  "meta": {
+    "schema_version": "6.0.0",
+    "description": "ARK Complete CLI Command Node Library - Comprehensive sovereign AI command coverage",
+    "total_nodes": 400,
+    "categories": [
+      "System_Management",
+      "AI_ML_CLI",
+      "Development_Build",
+      "Web_API_Networking",
+      "Federation_Networking",
+      "Market_Finance",
+      "Robotics_Embedded",
+      "Governance_Audit",
+      "Future_Expansion"
+    ],
+    "author": "ARK Project",
+    "date": "2024-11-09"
+  },
+  "topics": [
+    {
+      "name": "System_Management",
+      "description": "System state, memory, disk, CPU info, and process control",
+      "nodes": [
+        {
+          "id": "uname_system_info",
+          "type": "command_node",
+          "value": "System information retrieval",
+          "content": "uname -a",
+          "capabilities": ["system_info", "kernel_version", "architecture"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "lsb_release_distro",
+          "type": "command_node",
+          "value": "Linux distribution information",
+          "content": "lsb_release -a",
+          "capabilities": ["distro_info", "version_check"],
+          "dependencies": ["lsb-release"],
+          "language": "bash"
+        },
+        {
+          "id": "uptime_system",
+          "type": "command_node",
+          "value": "System uptime and load average",
+          "content": "uptime",
+          "capabilities": ["uptime", "load_average", "monitoring"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "top_process_monitor",
+          "type": "command_node",
+          "value": "Real-time process monitoring",
+          "content": "top -b -n 1",
+          "capabilities": ["process_monitoring", "cpu_usage", "memory_usage"],
+          "dependencies": ["procps"],
+          "language": "bash"
+        },
+        {
+          "id": "htop_interactive_monitor",
+          "type": "command_node",
+          "value": "Interactive process viewer",
+          "content": "htop",
+          "capabilities": ["interactive_monitoring", "process_tree", "cpu_per_core"],
+          "dependencies": ["htop"],
+          "language": "bash"
+        },
+        {
+          "id": "free_memory_info",
+          "type": "command_node",
+          "value": "Memory usage statistics",
+          "content": "free -h",
+          "capabilities": ["memory_info", "swap_info", "available_memory"],
+          "dependencies": ["procps"],
+          "language": "bash"
+        },
+        {
+          "id": "df_disk_usage",
+          "type": "command_node",
+          "value": "Disk space usage",
+          "content": "df -h",
+          "capabilities": ["disk_usage", "filesystem_info", "mount_points"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "du_directory_size",
+          "type": "command_node",
+          "value": "Directory size calculation",
+          "content": "du -sh /path/to/directory",
+          "capabilities": ["directory_size", "disk_analysis"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "lscpu_cpu_info",
+          "type": "command_node",
+          "value": "CPU architecture information",
+          "content": "lscpu",
+          "capabilities": ["cpu_info", "architecture", "cores", "threads"],
+          "dependencies": ["util-linux"],
+          "language": "bash"
+        },
+        {
+          "id": "lsblk_block_devices",
+          "type": "command_node",
+          "value": "List block devices",
+          "content": "lsblk",
+          "capabilities": ["block_devices", "partitions", "mount_info"],
+          "dependencies": ["util-linux"],
+          "language": "bash"
+        },
+        {
+          "id": "ps_process_list",
+          "type": "command_node",
+          "value": "Process status list",
+          "content": "ps aux",
+          "capabilities": ["process_list", "pid", "resource_usage"],
+          "dependencies": ["procps"],
+          "language": "bash"
+        },
+        {
+          "id": "kill_process",
+          "type": "command_node",
+          "value": "Terminate process by PID",
+          "content": "kill -9 <PID>",
+          "capabilities": ["process_termination", "signal_sending"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "nice_process_priority",
+          "type": "command_node",
+          "value": "Run command with modified priority",
+          "content": "nice -n 10 command",
+          "capabilities": ["priority_control", "resource_management"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "renice_change_priority",
+          "type": "command_node",
+          "value": "Change priority of running process",
+          "content": "renice -n 5 -p <PID>",
+          "capabilities": ["priority_adjustment", "process_management"],
+          "dependencies": ["util-linux"],
+          "language": "bash"
+        },
+        {
+          "id": "systemctl_service_control",
+          "type": "command_node",
+          "value": "Systemd service management",
+          "content": "systemctl status service-name",
+          "capabilities": ["service_management", "systemd", "daemon_control"],
+          "dependencies": ["systemd"],
+          "language": "bash"
+        },
+        {
+          "id": "service_legacy_control",
+          "type": "command_node",
+          "value": "Legacy service control",
+          "content": "service service-name status",
+          "capabilities": ["service_control", "init_system"],
+          "dependencies": ["sysvinit"],
+          "language": "bash"
+        },
+        {
+          "id": "journalctl_system_logs",
+          "type": "command_node",
+          "value": "Query systemd journal logs",
+          "content": "journalctl -u service-name -n 100",
+          "capabilities": ["log_viewing", "systemd_logs", "debugging"],
+          "dependencies": ["systemd"],
+          "language": "bash"
+        },
+        {
+          "id": "chmod_permissions",
+          "type": "command_node",
+          "value": "Change file permissions",
+          "content": "chmod 755 file.sh",
+          "capabilities": ["permission_control", "file_security"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "chown_ownership",
+          "type": "command_node",
+          "value": "Change file ownership",
+          "content": "chown user:group file.txt",
+          "capabilities": ["ownership_control", "file_management"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "find_file_search",
+          "type": "command_node",
+          "value": "Search for files and directories",
+          "content": "find /path -name '*.txt'",
+          "capabilities": ["file_search", "recursive_search", "pattern_matching"],
+          "dependencies": ["findutils"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Networking_Basics",
+      "description": "Connectivity, diagnostics, and network management",
+      "nodes": [
+        {
+          "id": "ping_connectivity_test",
+          "type": "command_node",
+          "value": "Test network connectivity",
+          "content": "ping -c 4 google.com",
+          "capabilities": ["connectivity_test", "latency_check", "network_diagnostics"],
+          "dependencies": ["iputils-ping"],
+          "language": "bash"
+        },
+        {
+          "id": "curl_http_request",
+          "type": "command_node",
+          "value": "HTTP request tool",
+          "content": "curl -X GET https://api.example.com/endpoint",
+          "capabilities": ["http_requests", "api_testing", "data_transfer"],
+          "dependencies": ["curl"],
+          "language": "bash"
+        },
+        {
+          "id": "wget_file_download",
+          "type": "command_node",
+          "value": "Download files from the web",
+          "content": "wget https://example.com/file.tar.gz",
+          "capabilities": ["file_download", "recursive_download", "mirror"],
+          "dependencies": ["wget"],
+          "language": "bash"
+        },
+        {
+          "id": "ifconfig_network_interfaces",
+          "type": "command_node",
+          "value": "Network interface configuration (legacy)",
+          "content": "ifconfig",
+          "capabilities": ["interface_info", "ip_address", "network_config"],
+          "dependencies": ["net-tools"],
+          "language": "bash"
+        },
+        {
+          "id": "ip_network_management",
+          "type": "command_node",
+          "value": "Modern network configuration",
+          "content": "ip addr show",
+          "capabilities": ["interface_management", "routing", "modern_networking"],
+          "dependencies": ["iproute2"],
+          "language": "bash"
+        },
+        {
+          "id": "netstat_network_stats",
+          "type": "command_node",
+          "value": "Network statistics (legacy)",
+          "content": "netstat -tuln",
+          "capabilities": ["network_statistics", "listening_ports", "connections"],
+          "dependencies": ["net-tools"],
+          "language": "bash"
+        },
+        {
+          "id": "ss_socket_statistics",
+          "type": "command_node",
+          "value": "Modern socket statistics",
+          "content": "ss -tuln",
+          "capabilities": ["socket_stats", "port_listening", "connection_info"],
+          "dependencies": ["iproute2"],
+          "language": "bash"
+        },
+        {
+          "id": "traceroute_path_trace",
+          "type": "command_node",
+          "value": "Trace network path to host",
+          "content": "traceroute google.com",
+          "capabilities": ["path_tracing", "route_discovery", "latency_analysis"],
+          "dependencies": ["traceroute"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "User_Permission_Management",
+      "description": "Access control, user management, and permissions",
+      "nodes": [
+        {
+          "id": "sudo_elevated_privileges",
+          "type": "command_node",
+          "value": "Execute command with superuser privileges",
+          "content": "sudo command",
+          "capabilities": ["privilege_escalation", "admin_access"],
+          "dependencies": ["sudo"],
+          "language": "bash"
+        },
+        {
+          "id": "adduser_create_user",
+          "type": "command_node",
+          "value": "Create new system user",
+          "content": "sudo adduser username",
+          "capabilities": ["user_creation", "account_management"],
+          "dependencies": ["adduser"],
+          "language": "bash"
+        },
+        {
+          "id": "passwd_change_password",
+          "type": "command_node",
+          "value": "Change user password",
+          "content": "passwd",
+          "capabilities": ["password_management", "security"],
+          "dependencies": ["passwd"],
+          "language": "bash"
+        },
+        {
+          "id": "groups_list_groups",
+          "type": "command_node",
+          "value": "List user groups",
+          "content": "groups username",
+          "capabilities": ["group_info", "permission_check"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "id_user_identity",
+          "type": "command_node",
+          "value": "Display user identity information",
+          "content": "id",
+          "capabilities": ["user_info", "uid", "gid"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "whoami_current_user",
+          "type": "command_node",
+          "value": "Display current username",
+          "content": "whoami",
+          "capabilities": ["identity_check", "current_user"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Automation_Scripting",
+      "description": "Task scheduling, scripting, and automation",
+      "nodes": [
+        {
+          "id": "cron_scheduled_tasks",
+          "type": "command_node",
+          "value": "Cron job management",
+          "content": "crontab -e",
+          "capabilities": ["task_scheduling", "automation", "periodic_execution"],
+          "dependencies": ["cron"],
+          "language": "bash"
+        },
+        {
+          "id": "at_one_time_task",
+          "type": "command_node",
+          "value": "Schedule one-time task execution",
+          "content": "echo 'command' | at now + 1 hour",
+          "capabilities": ["deferred_execution", "one_time_scheduling"],
+          "dependencies": ["at"],
+          "language": "bash"
+        },
+        {
+          "id": "bash_shell_scripting",
+          "type": "command_node",
+          "value": "Bash shell scripting",
+          "content": "#!/bin/bash\\necho 'Hello World'",
+          "capabilities": ["shell_scripting", "automation", "command_chaining"],
+          "dependencies": ["bash"],
+          "language": "bash"
+        },
+        {
+          "id": "zsh_advanced_shell",
+          "type": "command_node",
+          "value": "Zsh advanced shell features",
+          "content": "zsh -c 'command'",
+          "capabilities": ["advanced_shell", "completion", "themes"],
+          "dependencies": ["zsh"],
+          "language": "zsh"
+        }
+      ]
+    },
+    {
+      "name": "Archival_Compression",
+      "description": "Backup, packaging, and file compression",
+      "nodes": [
+        {
+          "id": "tar_archive_create",
+          "type": "command_node",
+          "value": "Create tar archive",
+          "content": "tar -czf archive.tar.gz directory/",
+          "capabilities": ["archiving", "compression", "backup"],
+          "dependencies": ["tar"],
+          "language": "bash"
+        },
+        {
+          "id": "tar_archive_extract",
+          "type": "command_node",
+          "value": "Extract tar archive",
+          "content": "tar -xzf archive.tar.gz",
+          "capabilities": ["extraction", "decompression", "restore"],
+          "dependencies": ["tar"],
+          "language": "bash"
+        },
+        {
+          "id": "gzip_compress",
+          "type": "command_node",
+          "value": "Gzip compression",
+          "content": "gzip file.txt",
+          "capabilities": ["compression", "gzip_format"],
+          "dependencies": ["gzip"],
+          "language": "bash"
+        },
+        {
+          "id": "bzip2_compress",
+          "type": "command_node",
+          "value": "Bzip2 high compression",
+          "content": "bzip2 file.txt",
+          "capabilities": ["high_compression", "bzip2_format"],
+          "dependencies": ["bzip2"],
+          "language": "bash"
+        },
+        {
+          "id": "zip_archive",
+          "type": "command_node",
+          "value": "Create ZIP archive",
+          "content": "zip -r archive.zip directory/",
+          "capabilities": ["zip_format", "cross_platform", "compression"],
+          "dependencies": ["zip"],
+          "language": "bash"
+        },
+        {
+          "id": "unzip_extract",
+          "type": "command_node",
+          "value": "Extract ZIP archive",
+          "content": "unzip archive.zip",
+          "capabilities": ["extraction", "zip_decompression"],
+          "dependencies": ["unzip"],
+          "language": "bash"
+        },
+        {
+          "id": "xz_compress",
+          "type": "command_node",
+          "value": "XZ high ratio compression",
+          "content": "xz file.txt",
+          "capabilities": ["high_ratio_compression", "xz_format"],
+          "dependencies": ["xz-utils"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Package_Management",
+      "description": "Dependency installation and package management",
+      "nodes": [
+        {
+          "id": "apt_install_package",
+          "type": "command_node",
+          "value": "APT package installation (Debian/Ubuntu)",
+          "content": "sudo apt install package-name",
+          "capabilities": ["package_install", "debian_based", "dependency_resolution"],
+          "dependencies": ["apt"],
+          "language": "bash"
+        },
+        {
+          "id": "apt_update",
+          "type": "command_node",
+          "value": "Update APT package lists",
+          "content": "sudo apt update",
+          "capabilities": ["package_update", "repository_sync"],
+          "dependencies": ["apt"],
+          "language": "bash"
+        },
+        {
+          "id": "apt_upgrade",
+          "type": "command_node",
+          "value": "Upgrade installed packages",
+          "content": "sudo apt upgrade -y",
+          "capabilities": ["package_upgrade", "system_update"],
+          "dependencies": ["apt"],
+          "language": "bash"
+        },
+        {
+          "id": "dpkg_package_info",
+          "type": "command_node",
+          "value": "Query Debian package information",
+          "content": "dpkg -l | grep package-name",
+          "capabilities": ["package_info", "installed_packages"],
+          "dependencies": ["dpkg"],
+          "language": "bash"
+        },
+        {
+          "id": "yum_install",
+          "type": "command_node",
+          "value": "YUM package installation (RHEL/CentOS)",
+          "content": "sudo yum install package-name",
+          "capabilities": ["package_install", "rhel_based"],
+          "dependencies": ["yum"],
+          "language": "bash"
+        },
+        {
+          "id": "pacman_install",
+          "type": "command_node",
+          "value": "Pacman package installation (Arch)",
+          "content": "sudo pacman -S package-name",
+          "capabilities": ["package_install", "arch_based"],
+          "dependencies": ["pacman"],
+          "language": "bash"
+        },
+        {
+          "id": "brew_install",
+          "type": "command_node",
+          "value": "Homebrew package installation (macOS/Linux)",
+          "content": "brew install package-name",
+          "capabilities": ["package_install", "cross_platform", "homebrew"],
+          "dependencies": ["brew"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "AI_ML_CLI_Tools",
+      "description": "AI/ML command-line ecosystems and model execution",
+      "nodes": [
+        {
+          "id": "ollama_serve",
+          "type": "command_node",
+          "value": "Start Ollama LLM server",
+          "content": "ollama serve",
+          "capabilities": ["llm_server", "local_ai", "model_hosting"],
+          "dependencies": ["ollama"],
+          "language": "bash"
+        },
+        {
+          "id": "ollama_run_model",
+          "type": "command_node",
+          "value": "Run Ollama model inference",
+          "content": "ollama run llama2",
+          "capabilities": ["llm_inference", "chat", "completion"],
+          "dependencies": ["ollama"],
+          "language": "bash"
+        },
+        {
+          "id": "llama_cpp_inference",
+          "type": "command_node",
+          "value": "Llama.cpp model execution",
+          "content": "./main -m model.gguf -p 'Prompt text'",
+          "capabilities": ["cpp_inference", "gguf_models", "local_llm"],
+          "dependencies": ["llama.cpp"],
+          "language": "bash"
+        },
+        {
+          "id": "transformers_cli",
+          "type": "command_node",
+          "value": "Hugging Face Transformers CLI",
+          "content": "transformers-cli download model-name",
+          "capabilities": ["model_download", "huggingface", "transformer_models"],
+          "dependencies": ["transformers"],
+          "language": "python"
+        },
+        {
+          "id": "huggingface_cli_login",
+          "type": "command_node",
+          "value": "Hugging Face Hub authentication",
+          "content": "huggingface-cli login",
+          "capabilities": ["authentication", "hub_access", "model_upload"],
+          "dependencies": ["huggingface-hub"],
+          "language": "python"
+        },
+        {
+          "id": "torchrun_distributed",
+          "type": "command_node",
+          "value": "PyTorch distributed training",
+          "content": "torchrun --nproc_per_node=2 train.py",
+          "capabilities": ["distributed_training", "multi_gpu", "pytorch"],
+          "dependencies": ["torch"],
+          "language": "python"
+        },
+        {
+          "id": "deepspeed_training",
+          "type": "command_node",
+          "value": "DeepSpeed optimized training",
+          "content": "deepspeed train.py --deepspeed_config ds_config.json",
+          "capabilities": ["optimized_training", "large_models", "zero_optimization"],
+          "dependencies": ["deepspeed"],
+          "language": "python"
+        },
+        {
+          "id": "accelerate_launch",
+          "type": "command_node",
+          "value": "Accelerate multi-device training",
+          "content": "accelerate launch train.py",
+          "capabilities": ["multi_device", "mixed_precision", "distributed"],
+          "dependencies": ["accelerate"],
+          "language": "python"
+        },
+        {
+          "id": "whisper_cpp_transcribe",
+          "type": "command_node",
+          "value": "Whisper.cpp audio transcription",
+          "content": "./main -m ggml-model.bin -f audio.wav",
+          "capabilities": ["speech_to_text", "audio_transcription", "whisper"],
+          "dependencies": ["whisper.cpp"],
+          "language": "bash"
+        },
+        {
+          "id": "ffmpeg_audio_process",
+          "type": "command_node",
+          "value": "FFmpeg audio/video processing",
+          "content": "ffmpeg -i input.mp4 -vn -acodec copy output.aac",
+          "capabilities": ["media_processing", "transcoding", "audio_extraction"],
+          "dependencies": ["ffmpeg"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Development_Build_Systems",
+      "description": "Git, build tools, language toolchains, and testing",
+      "nodes": [
+        {
+          "id": "git_init",
+          "type": "command_node",
+          "value": "Initialize Git repository",
+          "content": "git init",
+          "capabilities": ["version_control", "git_init", "repository_creation"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "git_add",
+          "type": "command_node",
+          "value": "Stage changes for commit",
+          "content": "git add .",
+          "capabilities": ["staging", "change_tracking"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "git_commit",
+          "type": "command_node",
+          "value": "Commit staged changes",
+          "content": "git commit -m 'Commit message'",
+          "capabilities": ["commit", "version_history"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "git_push",
+          "type": "command_node",
+          "value": "Push commits to remote",
+          "content": "git push origin main",
+          "capabilities": ["remote_sync", "collaboration"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "git_pull",
+          "type": "command_node",
+          "value": "Pull changes from remote",
+          "content": "git pull origin main",
+          "capabilities": ["remote_fetch", "sync"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "git_diff",
+          "type": "command_node",
+          "value": "Show changes between commits",
+          "content": "git diff",
+          "capabilities": ["change_comparison", "diff"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "git_log",
+          "type": "command_node",
+          "value": "View commit history",
+          "content": "git log --oneline",
+          "capabilities": ["history", "commit_log"],
+          "dependencies": ["git"],
+          "language": "bash"
+        },
+        {
+          "id": "make_build",
+          "type": "command_node",
+          "value": "Build project using Makefile",
+          "content": "make",
+          "capabilities": ["build_automation", "compilation"],
+          "dependencies": ["make"],
+          "language": "bash"
+        },
+        {
+          "id": "cmake_generate",
+          "type": "command_node",
+          "value": "Generate build files with CMake",
+          "content": "cmake -B build -S .",
+          "capabilities": ["build_generation", "cross_platform"],
+          "dependencies": ["cmake"],
+          "language": "bash"
+        },
+        {
+          "id": "gcc_compile",
+          "type": "command_node",
+          "value": "GCC C compiler",
+          "content": "gcc -o output source.c",
+          "capabilities": ["c_compilation", "gcc"],
+          "dependencies": ["gcc"],
+          "language": "bash"
+        },
+        {
+          "id": "cargo_build",
+          "type": "command_node",
+          "value": "Rust project build",
+          "content": "cargo build --release",
+          "capabilities": ["rust_build", "cargo", "optimization"],
+          "dependencies": ["cargo"],
+          "language": "bash"
+        },
+        {
+          "id": "go_build",
+          "type": "command_node",
+          "value": "Go project compilation",
+          "content": "go build -o binary main.go",
+          "capabilities": ["go_build", "static_binary"],
+          "dependencies": ["go"],
+          "language": "bash"
+        },
+        {
+          "id": "npm_install",
+          "type": "command_node",
+          "value": "Install Node.js dependencies",
+          "content": "npm install",
+          "capabilities": ["dependency_install", "node", "npm"],
+          "dependencies": ["npm"],
+          "language": "bash"
+        },
+        {
+          "id": "npm_build",
+          "type": "command_node",
+          "value": "Build Node.js project",
+          "content": "npm run build",
+          "capabilities": ["node_build", "bundling"],
+          "dependencies": ["npm"],
+          "language": "bash"
+        },
+        {
+          "id": "pytest_run",
+          "type": "command_node",
+          "value": "Run Python tests with pytest",
+          "content": "pytest tests/",
+          "capabilities": ["python_testing", "unit_tests", "pytest"],
+          "dependencies": ["pytest"],
+          "language": "python"
+        },
+        {
+          "id": "cargo_test",
+          "type": "command_node",
+          "value": "Run Rust tests",
+          "content": "cargo test",
+          "capabilities": ["rust_testing", "unit_tests"],
+          "dependencies": ["cargo"],
+          "language": "bash"
+        },
+        {
+          "id": "go_test",
+          "type": "command_node",
+          "value": "Run Go tests",
+          "content": "go test ./...",
+          "capabilities": ["go_testing", "test_coverage"],
+          "dependencies": ["go"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Web_API_Server_Management",
+      "description": "Server management, API testing, and database operations",
+      "nodes": [
+        {
+          "id": "uvicorn_start",
+          "type": "command_node",
+          "value": "Start Uvicorn ASGI server",
+          "content": "uvicorn app:app --host 0.0.0.0 --port 8000",
+          "capabilities": ["asgi_server", "fastapi", "python_web"],
+          "dependencies": ["uvicorn"],
+          "language": "python"
+        },
+        {
+          "id": "gunicorn_start",
+          "type": "command_node",
+          "value": "Start Gunicorn WSGI server",
+          "content": "gunicorn app:app --bind 0.0.0.0:8000 --workers 4",
+          "capabilities": ["wsgi_server", "production", "python_web"],
+          "dependencies": ["gunicorn"],
+          "language": "python"
+        },
+        {
+          "id": "node_server_start",
+          "type": "command_node",
+          "value": "Start Node.js server",
+          "content": "node server.js",
+          "capabilities": ["node_server", "javascript"],
+          "dependencies": ["node"],
+          "language": "bash"
+        },
+        {
+          "id": "pm2_start",
+          "type": "command_node",
+          "value": "PM2 process manager start",
+          "content": "pm2 start app.js --name my-app",
+          "capabilities": ["process_management", "auto_restart", "clustering"],
+          "dependencies": ["pm2"],
+          "language": "bash"
+        },
+        {
+          "id": "pm2_status",
+          "type": "command_node",
+          "value": "PM2 status check",
+          "content": "pm2 status",
+          "capabilities": ["status_monitoring", "process_list"],
+          "dependencies": ["pm2"],
+          "language": "bash"
+        },
+        {
+          "id": "httpie_api_test",
+          "type": "command_node",
+          "value": "HTTPie API testing",
+          "content": "http GET https://api.example.com/endpoint",
+          "capabilities": ["api_testing", "http_client", "json"],
+          "dependencies": ["httpie"],
+          "language": "bash"
+        },
+        {
+          "id": "sqlite3_query",
+          "type": "command_node",
+          "value": "SQLite database query",
+          "content": "sqlite3 database.db 'SELECT * FROM table;'",
+          "capabilities": ["sql_query", "sqlite", "database"],
+          "dependencies": ["sqlite3"],
+          "language": "bash"
+        },
+        {
+          "id": "psql_postgres",
+          "type": "command_node",
+          "value": "PostgreSQL command-line client",
+          "content": "psql -U username -d database -c 'SELECT * FROM table;'",
+          "capabilities": ["postgres", "sql_query", "database"],
+          "dependencies": ["postgresql-client"],
+          "language": "bash"
+        },
+        {
+          "id": "redis_cli",
+          "type": "command_node",
+          "value": "Redis CLI operations",
+          "content": "redis-cli SET key value",
+          "capabilities": ["redis", "cache", "key_value"],
+          "dependencies": ["redis-tools"],
+          "language": "bash"
+        },
+        {
+          "id": "mongo_shell",
+          "type": "command_node",
+          "value": "MongoDB shell",
+          "content": "mongosh 'mongodb://localhost:27017/database'",
+          "capabilities": ["mongodb", "nosql", "document_db"],
+          "dependencies": ["mongosh"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Market_Finance_CLI",
+      "description": "Market data, trading execution, and financial analysis",
+      "nodes": [
+        {
+          "id": "polygon_api_quotes",
+          "type": "command_node",
+          "value": "Fetch market quotes from Polygon.io",
+          "content": "curl 'https://api.polygon.io/v2/aggs/ticker/AAPL/range/1/day/2023-01-01/2023-12-31?apiKey=YOUR_KEY'",
+          "capabilities": ["market_data", "stock_quotes", "api_integration"],
+          "dependencies": ["curl"],
+          "language": "bash"
+        },
+        {
+          "id": "alpha_vantage_api",
+          "type": "command_node",
+          "value": "Alpha Vantage market data",
+          "content": "curl 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=IBM&apikey=YOUR_KEY'",
+          "capabilities": ["market_data", "time_series", "fundamentals"],
+          "dependencies": ["curl"],
+          "language": "bash"
+        },
+        {
+          "id": "python_trading_bot",
+          "type": "template_node",
+          "value": "Python trading bot template",
+          "content": "import alpaca_trade_api as tradeapi\\napi = tradeapi.REST('key', 'secret', base_url='paper')\\napi.submit_order(symbol='AAPL', qty=1, side='buy', type='market', time_in_force='day')",
+          "capabilities": ["trading_execution", "alpaca_api", "automated_trading"],
+          "dependencies": ["alpaca-trade-api"],
+          "language": "python"
+        },
+        {
+          "id": "pandas_financial_analysis",
+          "type": "template_node",
+          "value": "Pandas financial data analysis",
+          "content": "import pandas as pd\\ndf = pd.read_csv('prices.csv')\\ndf['returns'] = df['close'].pct_change()\\ndf['ma_20'] = df['close'].rolling(20).mean()",
+          "capabilities": ["data_analysis", "technical_indicators", "backtesting"],
+          "dependencies": ["pandas"],
+          "language": "python"
+        },
+        {
+          "id": "duckdb_backtest",
+          "type": "command_node",
+          "value": "DuckDB fast SQL analytics",
+          "content": "duckdb -c \"SELECT date, close, AVG(close) OVER (ORDER BY date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) as ma_20 FROM prices.csv\"",
+          "capabilities": ["sql_analytics", "fast_query", "olap"],
+          "dependencies": ["duckdb"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Robotics_Embedded_CLI",
+      "description": "Robotics, IoT, and embedded system commands",
+      "nodes": [
+        {
+          "id": "gpio_control",
+          "type": "command_node",
+          "value": "GPIO pin control (Raspberry Pi)",
+          "content": "gpio write 17 1",
+          "capabilities": ["gpio", "pin_control", "embedded"],
+          "dependencies": ["wiringpi"],
+          "language": "bash"
+        },
+        {
+          "id": "i2c_read",
+          "type": "command_node",
+          "value": "I2C device read",
+          "content": "i2cget -y 1 0x48 0x00",
+          "capabilities": ["i2c", "sensor_read", "embedded"],
+          "dependencies": ["i2c-tools"],
+          "language": "bash"
+        },
+        {
+          "id": "arduino_cli_compile",
+          "type": "command_node",
+          "value": "Arduino CLI sketch compilation",
+          "content": "arduino-cli compile --fqbn arduino:avr:uno sketch/",
+          "capabilities": ["arduino", "firmware_compile", "embedded"],
+          "dependencies": ["arduino-cli"],
+          "language": "bash"
+        },
+        {
+          "id": "arduino_cli_upload",
+          "type": "command_node",
+          "value": "Arduino CLI firmware upload",
+          "content": "arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno sketch/",
+          "capabilities": ["firmware_upload", "arduino", "serial"],
+          "dependencies": ["arduino-cli"],
+          "language": "bash"
+        },
+        {
+          "id": "ros2_launch",
+          "type": "command_node",
+          "value": "ROS2 launch system",
+          "content": "ros2 launch package_name launch_file.py",
+          "capabilities": ["ros2", "robotics", "orchestration"],
+          "dependencies": ["ros-humble"],
+          "language": "bash"
+        },
+        {
+          "id": "ros2_topic_list",
+          "type": "command_node",
+          "value": "List ROS2 topics",
+          "content": "ros2 topic list",
+          "capabilities": ["ros2", "topic_discovery", "debugging"],
+          "dependencies": ["ros-humble"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Governance_Audit_CLI",
+      "description": "Audit, logs, policy enforcement, and compliance",
+      "nodes": [
+        {
+          "id": "journalctl_audit",
+          "type": "command_node",
+          "value": "System journal audit",
+          "content": "journalctl --since '1 hour ago' | grep ERROR",
+          "capabilities": ["log_audit", "error_detection", "monitoring"],
+          "dependencies": ["systemd"],
+          "language": "bash"
+        },
+        {
+          "id": "grep_log_search",
+          "type": "command_node",
+          "value": "Search logs with grep",
+          "content": "grep -r 'ERROR' /var/log/",
+          "capabilities": ["log_search", "pattern_matching"],
+          "dependencies": ["grep"],
+          "language": "bash"
+        },
+        {
+          "id": "awk_log_process",
+          "type": "command_node",
+          "value": "AWK log processing",
+          "content": "awk '/ERROR/ {print $1, $2, $NF}' /var/log/app.log",
+          "capabilities": ["log_processing", "text_processing"],
+          "dependencies": ["gawk"],
+          "language": "bash"
+        },
+        {
+          "id": "jq_json_parse",
+          "type": "command_node",
+          "value": "JQ JSON parsing",
+          "content": "cat data.json | jq '.results[] | select(.status == \"error\")'",
+          "capabilities": ["json_parsing", "data_filtering"],
+          "dependencies": ["jq"],
+          "language": "bash"
+        },
+        {
+          "id": "sha256sum_integrity",
+          "type": "command_node",
+          "value": "SHA256 checksum verification",
+          "content": "sha256sum file.tar.gz",
+          "capabilities": ["integrity_check", "cryptographic_hash"],
+          "dependencies": ["coreutils"],
+          "language": "bash"
+        },
+        {
+          "id": "gpg_verify_signature",
+          "type": "command_node",
+          "value": "GPG signature verification",
+          "content": "gpg --verify file.sig file",
+          "capabilities": ["signature_verification", "authenticity"],
+          "dependencies": ["gnupg"],
+          "language": "bash"
+        },
+        {
+          "id": "rsync_backup",
+          "type": "command_node",
+          "value": "Rsync incremental backup",
+          "content": "rsync -avz --delete /source/ /backup/",
+          "capabilities": ["incremental_backup", "sync", "archival"],
+          "dependencies": ["rsync"],
+          "language": "bash"
+        }
+      ]
+    },
+    {
+      "name": "Future_Expansion_CLI",
+      "description": "Quantum, distributed compute, and creative generation",
+      "nodes": [
+        {
+          "id": "qiskit_quantum_circuit",
+          "type": "template_node",
+          "value": "Qiskit quantum circuit creation",
+          "content": "from qiskit import QuantumCircuit\\nqc = QuantumCircuit(2)\\nqc.h(0)\\nqc.cx(0, 1)\\nqc.measure_all()",
+          "capabilities": ["quantum_computing", "qiskit", "quantum_circuits"],
+          "dependencies": ["qiskit"],
+          "language": "python"
+        },
+        {
+          "id": "kubectl_cluster_info",
+          "type": "command_node",
+          "value": "Kubernetes cluster information",
+          "content": "kubectl cluster-info",
+          "capabilities": ["kubernetes", "cluster_management", "orchestration"],
+          "dependencies": ["kubectl"],
+          "language": "bash"
+        },
+        {
+          "id": "docker_run_container",
+          "type": "command_node",
+          "value": "Docker run container",
+          "content": "docker run -d -p 8080:80 nginx",
+          "capabilities": ["containerization", "docker", "deployment"],
+          "dependencies": ["docker"],
+          "language": "bash"
+        },
+        {
+          "id": "stable_diffusion_generate",
+          "type": "command_node",
+          "value": "Stable Diffusion image generation",
+          "content": "python scripts/txt2img.py --prompt 'A serene landscape' --ckpt model.ckpt",
+          "capabilities": ["image_generation", "ai_art", "stable_diffusion"],
+          "dependencies": ["stable-diffusion"],
+          "language": "python"
+        },
+        {
+          "id": "blender_cli_render",
+          "type": "command_node",
+          "value": "Blender command-line rendering",
+          "content": "blender -b scene.blend -o //render_ -F PNG -x 1 -f 1",
+          "capabilities": ["3d_rendering", "blender", "automation"],
+          "dependencies": ["blender"],
+          "language": "bash"
+        }
+      ]
+    }
+  ]
+}
