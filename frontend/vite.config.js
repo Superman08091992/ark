@@ -9,8 +9,9 @@ export default defineConfig({
     emptyOutDir: true
   },
   server: {
-    host: true,
+    host: '0.0.0.0',
     port: 3000,
+    allowedHosts: ['all'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -19,13 +20,18 @@ export default defineConfig({
     }
   },
   preview: {
-    host: true,
+    host: '0.0.0.0',
     port: 4173,
     strictPort: false,
-    allowedHosts: ['.sandbox.novita.ai'],
+    allowedHosts: ['all', '.sandbox.novita.ai'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
         changeOrigin: true
       }
     }
