@@ -1,38 +1,38 @@
 #!/bin/bash
 ################################################################################
-# ARK Enhancement #12: Systemd Services (Raspberry Pi)
+# ARK Enhancement #12: Systemd Services (Raspberry Pi / Linux)
 ################################################################################
 #
 # WHAT THIS DOES:
 # ---------------
-# Creates systemd service files for ARK, Redis, and Ollama to enable automatic
-# startup on boot. Designed specifically for Raspberry Pi and Debian-based
-# systems with systemd support.
+# Creates and manages systemd service units for ARK components (Redis, Ollama,
+# ARK backend) to enable auto-start on boot and proper service management on
+# Raspberry Pi and other Linux systems.
 #
 # FEATURES:
 # ---------
-# ✅ Systemd service creation for ARK backend
-# ✅ Redis service configuration
-# ✅ Ollama service setup (if installed)
-# ✅ Auto-start on boot
-# ✅ Automatic restart on failure
+# ✅ Systemd service unit creation for all ARK components
+# ✅ Auto-start on boot configuration
 # ✅ Service dependency management
-# ✅ Log management with journald
-# ✅ User-level and system-level services
-# ✅ Service status monitoring
-# ✅ Easy enable/disable commands
+# ✅ Automatic restart on failure
+# ✅ Proper log management with journald
+# ✅ User-mode services (no root required for ARK)
+# ✅ Service enable/disable commands
+# ✅ Status monitoring
+# ✅ Log viewing integration
+# ✅ Uninstall capability
 #
 # USAGE:
 # ------
-# ark-service install           # Install all service files
-# ark-service enable            # Enable services (auto-start on boot)
-# ark-service disable           # Disable auto-start
-# ark-service start             # Start all services
-# ark-service stop              # Stop all services
-# ark-service restart           # Restart all services
-# ark-service status            # Show service status
-# ark-service logs [service]    # Show service logs
-# ark-service uninstall         # Remove service files
+# ark-services install           # Install all systemd services
+# ark-services enable            # Enable auto-start on boot
+# ark-services disable           # Disable auto-start
+# ark-services start             # Start all services
+# ark-services stop              # Stop all services
+# ark-services restart           # Restart all services
+# ark-services status            # Show status of all services
+# ark-services logs [service]    # View service logs
+# ark-services uninstall         # Remove systemd services
 #
 ################################################################################
 
@@ -43,6 +43,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # ARK home detection
@@ -54,15 +55,12 @@ else
     INSTALL_DIR="$HOME/ark"
 fi
 
-# Service configuration
-SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
-SYSTEMD_SYSTEM_DIR="/etc/systemd/system"
-USE_USER_SERVICES=true
+# Systemd directories
+USER_SYSTEMD_DIR="$HOME/.config/systemd/user"
+SYSTEM_SYSTEMD_DIR="/etc/systemd/system"
 
-# Check if we should use user or system services
-if [ "$EUID" -eq 0 ]; then
-    USE_USER_SERVICES=false
-fi
+# Use user services by default (no root required)
+USE_USER_SERVICES=true
 
 ################################################################################
 # Helper Functions
@@ -76,28 +74,16 @@ print_header() {
     echo ""
 }
 
+print_section() {
+    echo ""
+    echo -e "${CYAN}▶ $1${NC}"
+}
+
 check_systemd() {
     if ! command -v systemctl &>/dev/null; then
-        echo -e "${RED}❌ systemd not found on this system${NC}"
-        echo "This enhancement is for systemd-based systems only."
+        echo -e "${RED}❌ systemd is not available on this system${NC}"
+        echo "This enhancement is for Linux systems with systemd (Raspberry Pi, Ubuntu, Debian, etc.)"
         exit 1
-    fi
-}
-
-check_platform() {
-    # Verify this is a suitable platform (not Termux)
-    if [ -d "/data/data/com.termux" ]; then
-        echo -e "${YELLOW}⚠️  Termux detected - systemd services not available${NC}"
-        echo "On Termux, use: ark start (manual start)"
-        exit 1
-    fi
-}
-
-get_service_dir() {
-    if [ "$USE_USER_SERVICES" = true ]; then
-        echo "$SYSTEMD_USER_DIR"
-    else
-        echo "$SYSTEMD_SYSTEM_DIR"
     fi
 }
 
@@ -109,79 +95,23 @@ get_systemctl_cmd() {
     fi
 }
 
-################################################################################
-# Service File Generators
-################################################################################
-
-create_ark_service() {
-    local service_dir=$(get_service_dir)
-    local service_file="$service_dir/ark-backend.service"
-    
-    echo "📝 Creating ARK backend service..."
-    
-    mkdir -p "$service_dir"
-    
-    cat > "$service_file" << EOF
-[Unit]
-Description=ARK Intelligent Backend
-Documentation=https://github.com/Superman08091992/ark
-After=network.target redis.service
-Wants=redis.service
-
-[Service]
-Type=simple
-User=$(whoami)
-WorkingDirectory=$INSTALL_DIR/lib
-Environment="PATH=$INSTALL_DIR/bin:$PATH"
-Environment="ARK_HOME=$INSTALL_DIR"
-Environment="NODE_ENV=production"
-
-# Load environment variables from .env file
-EnvironmentFile=-$INSTALL_DIR/.env
-
-# Start ARK backend
-ExecStart=$INSTALL_DIR/deps/node/nodejs/bin/node intelligent-backend.cjs
-
-# Restart configuration
-Restart=always
-RestartSec=10
-StartLimitInterval=200
-StartLimitBurst=5
-
-# Resource limits
-LimitNOFILE=65536
-LimitNPROC=4096
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=ark-backend
-
-[Install]
-WantedBy=default.target
-EOF
-
-    chmod 644 "$service_file"
-    echo -e "${GREEN}✅ ARK backend service created${NC}"
+get_service_dir() {
+    if [ "$USE_USER_SERVICES" = true ]; then
+        echo "$USER_SYSTEMD_DIR"
+    else
+        echo "$SYSTEM_SYSTEMD_DIR"
+    fi
 }
+
+################################################################################
+# Service Creation Functions
+################################################################################
 
 create_redis_service() {
     local service_dir=$(get_service_dir)
     local service_file="$service_dir/ark-redis.service"
     
-    # Check if system Redis service exists
-    if systemctl list-unit-files | grep -q "^redis-server.service\|^redis.service"; then
-        echo -e "${BLUE}ℹ️  System Redis service already exists, skipping ARK Redis service${NC}"
-        return 0
-    fi
-    
-    # Check if bundled Redis exists
-    if [ ! -f "$INSTALL_DIR/deps/redis/redis-server" ]; then
-        echo -e "${YELLOW}⚠️  Bundled Redis not found, skipping Redis service${NC}"
-        return 0
-    fi
-    
-    echo "📝 Creating ARK Redis service..."
+    print_section "Creating Redis service"
     
     mkdir -p "$service_dir"
     
@@ -192,56 +122,36 @@ Documentation=https://redis.io/documentation
 After=network.target
 
 [Service]
-Type=forking
-User=$(whoami)
-WorkingDirectory=$INSTALL_DIR/data/redis
-
-# Start Redis with bundled binary
-ExecStart=$INSTALL_DIR/deps/redis/redis-server $INSTALL_DIR/config/redis.conf --daemonize yes
-ExecStop=/bin/kill -s TERM \$MAINPID
-
-# PID file
-PIDFile=$INSTALL_DIR/data/redis/redis.pid
-
-# Restart configuration
-Restart=always
-RestartSec=5
-StartLimitInterval=120
-StartLimitBurst=3
-
-# Resource limits
-LimitNOFILE=65536
-
-# Logging
+Type=simple
+ExecStart=$INSTALL_DIR/bin/ark-redis --port 6379 --bind 127.0.0.1
+Restart=on-failure
+RestartSec=5s
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ark-redis
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=default.target
 EOF
 
-    chmod 644 "$service_file"
-    echo -e "${GREEN}✅ Redis service created${NC}"
+    echo -e "${GREEN}✅ Created: $service_file${NC}"
 }
 
 create_ollama_service() {
-    # Check if Ollama is installed
-    if ! command -v ollama &>/dev/null; then
-        echo -e "${BLUE}ℹ️  Ollama not installed, skipping Ollama service${NC}"
-        return 0
-    fi
-    
-    # Check if system Ollama service exists
-    if systemctl list-unit-files | grep -q "^ollama.service"; then
-        echo -e "${BLUE}ℹ️  System Ollama service already exists, skipping${NC}"
-        return 0
-    fi
-    
     local service_dir=$(get_service_dir)
     local service_file="$service_dir/ark-ollama.service"
     
-    echo "📝 Creating ARK Ollama service..."
+    print_section "Creating Ollama service"
+    
+    # Check if Ollama is installed
+    if ! command -v ollama &>/dev/null; then
+        echo -e "${YELLOW}⚠️  Ollama not installed - skipping service creation${NC}"
+        echo "   Install Ollama with: ark-ollama install"
+        return 0
+    fi
     
     mkdir -p "$service_dir"
     
@@ -253,33 +163,68 @@ After=network.target
 
 [Service]
 Type=simple
-User=$(whoami)
-Environment="PATH=/usr/local/bin:/usr/bin:/bin"
-Environment="OLLAMA_HOST=127.0.0.1:11434"
-
-# Start Ollama
 ExecStart=$(which ollama) serve
-
-# Restart configuration
-Restart=always
-RestartSec=10
-StartLimitInterval=200
-StartLimitBurst=5
-
-# Resource limits
-LimitNOFILE=65536
-
-# Logging
+Restart=on-failure
+RestartSec=10s
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ark-ollama
+Environment="OLLAMA_HOST=127.0.0.1:11434"
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=default.target
 EOF
 
-    chmod 644 "$service_file"
-    echo -e "${GREEN}✅ Ollama service created${NC}"
+    echo -e "${GREEN}✅ Created: $service_file${NC}"
+}
+
+create_ark_backend_service() {
+    local service_dir=$(get_service_dir)
+    local service_file="$service_dir/ark-backend.service"
+    
+    print_section "Creating ARK Backend service"
+    
+    mkdir -p "$service_dir"
+    
+    # Detect Node.js path
+    local node_path="node"
+    if [ -f "$INSTALL_DIR/deps/node/nodejs/bin/node" ]; then
+        node_path="$INSTALL_DIR/deps/node/nodejs/bin/node"
+    fi
+    
+    cat > "$service_file" << EOF
+[Unit]
+Description=ARK Intelligent Backend
+Documentation=https://github.com/Superman08091992/ark
+After=network.target ark-redis.service
+Wants=ark-redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=$INSTALL_DIR/lib
+ExecStart=$node_path $INSTALL_DIR/lib/intelligent-backend.cjs
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment="ARK_HOME=$INSTALL_DIR"
+Environment="NODE_ENV=production"
+EnvironmentFile=-$INSTALL_DIR/.env
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
+EOF
+
+    echo -e "${GREEN}✅ Created: $service_file${NC}"
 }
 
 ################################################################################
@@ -287,143 +232,142 @@ EOF
 ################################################################################
 
 install_services() {
-    print_header "📦 Installing ARK Services"
+    print_header "🔧 Installing ARK Systemd Services"
     
     check_systemd
-    check_platform
     
-    if [ "$USE_USER_SERVICES" = true ]; then
-        echo "Installing user-level services..."
-        echo "Services will run as: $(whoami)"
-        echo ""
+    # Ask if user wants system or user services
+    if [ "$(id -u)" = "0" ]; then
+        echo "Running as root - using system services"
+        USE_USER_SERVICES=false
     else
-        echo "Installing system-level services..."
-        echo "Services will run as: $(whoami)"
-        echo ""
+        echo "User service mode (recommended - no root required)"
+        USE_USER_SERVICES=true
     fi
     
-    # Create service files
-    create_ark_service
+    # Create services
     create_redis_service
     create_ollama_service
+    create_ark_backend_service
     
     # Reload systemd
-    echo ""
-    echo "🔄 Reloading systemd daemon..."
+    print_section "Reloading systemd"
     if [ "$USE_USER_SERVICES" = true ]; then
         systemctl --user daemon-reload
+        echo -e "${GREEN}✅ User services reloaded${NC}"
     else
         sudo systemctl daemon-reload
+        echo -e "${GREEN}✅ System services reloaded${NC}"
     fi
     
     echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}✅ Services installed successfully!${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo "Next steps:"
-    echo "  1. Enable services:  ark-service enable"
-    echo "  2. Start services:   ark-service start"
-    echo "  3. Check status:     ark-service status"
+    echo "  1. Enable auto-start:  ark-services enable"
+    echo "  2. Start services:     ark-services start"
+    echo "  3. Check status:       ark-services status"
     echo ""
 }
 
 enable_services() {
-    print_header "🚀 Enabling ARK Services"
+    print_header "🚀 Enabling Auto-Start on Boot"
     
+    check_systemd
     local systemctl_cmd=$(get_systemctl_cmd)
     
-    echo "Enabling services for auto-start on boot..."
-    echo ""
-    
-    # Enable ARK backend
-    if [ -f "$(get_service_dir)/ark-backend.service" ]; then
-        echo -n "  ARK Backend... "
-        $systemctl_cmd enable ark-backend.service 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
+    # Enable lingering for user services (allows services to run without login)
+    if [ "$USE_USER_SERVICES" = true ]; then
+        if command -v loginctl &>/dev/null; then
+            loginctl enable-linger "$USER" 2>/dev/null || true
+        fi
     fi
     
-    # Enable Redis
-    if [ -f "$(get_service_dir)/ark-redis.service" ]; then
-        echo -n "  ARK Redis... "
-        $systemctl_cmd enable ark-redis.service 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
-    fi
-    
-    # Enable Ollama
-    if [ -f "$(get_service_dir)/ark-ollama.service" ]; then
-        echo -n "  ARK Ollama... "
-        $systemctl_cmd enable ark-ollama.service 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
-    fi
-    
-    echo ""
-    echo -e "${GREEN}✅ Services enabled - will start automatically on boot${NC}"
-    echo ""
-}
-
-disable_services() {
-    print_header "🛑 Disabling ARK Services"
-    
-    local systemctl_cmd=$(get_systemctl_cmd)
-    
-    echo "Disabling auto-start on boot..."
-    echo ""
-    
-    # Disable services
-    for service in ark-backend ark-redis ark-ollama; do
-        if [ -f "$(get_service_dir)/${service}.service" ]; then
-            echo -n "  $service... "
-            $systemctl_cmd disable "${service}.service" 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
+    # Enable each service
+    for service in ark-redis ark-ollama ark-backend; do
+        local service_file="$(get_service_dir)/${service}.service"
+        if [ -f "$service_file" ]; then
+            echo -n "Enabling ${service}... "
+            if $systemctl_cmd enable "${service}.service" &>/dev/null; then
+                echo -e "${GREEN}✅${NC}"
+            else
+                echo -e "${YELLOW}⚠️${NC}"
+            fi
         fi
     done
     
     echo ""
-    echo -e "${GREEN}✅ Services disabled${NC}"
+    echo -e "${GREEN}✅ Services enabled - will start automatically on boot${NC}"
+}
+
+disable_services() {
+    print_header "🛑 Disabling Auto-Start on Boot"
+    
+    check_systemd
+    local systemctl_cmd=$(get_systemctl_cmd)
+    
+    for service in ark-redis ark-ollama ark-backend; do
+        local service_file="$(get_service_dir)/${service}.service"
+        if [ -f "$service_file" ]; then
+            echo -n "Disabling ${service}... "
+            if $systemctl_cmd disable "${service}.service" &>/dev/null; then
+                echo -e "${GREEN}✅${NC}"
+            else
+                echo -e "${YELLOW}⚠️${NC}"
+            fi
+        fi
+    done
+    
     echo ""
+    echo -e "${GREEN}✅ Services disabled - will not start automatically${NC}"
 }
 
 start_services() {
     print_header "▶️  Starting ARK Services"
     
+    check_systemd
     local systemctl_cmd=$(get_systemctl_cmd)
     
-    # Start Redis first (dependency)
-    if [ -f "$(get_service_dir)/ark-redis.service" ]; then
-        echo -n "Starting Redis... "
-        $systemctl_cmd start ark-redis.service 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
-        sleep 2
-    fi
-    
-    # Start Ollama
-    if [ -f "$(get_service_dir)/ark-ollama.service" ]; then
-        echo -n "Starting Ollama... "
-        $systemctl_cmd start ark-ollama.service 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
-        sleep 2
-    fi
-    
-    # Start ARK backend
-    if [ -f "$(get_service_dir)/ark-backend.service" ]; then
-        echo -n "Starting ARK Backend... "
-        $systemctl_cmd start ark-backend.service 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
-    fi
+    # Start in dependency order
+    for service in ark-redis ark-ollama ark-backend; do
+        local service_file="$(get_service_dir)/${service}.service"
+        if [ -f "$service_file" ]; then
+            echo -n "Starting ${service}... "
+            if $systemctl_cmd start "${service}.service" &>/dev/null; then
+                echo -e "${GREEN}✅${NC}"
+            else
+                echo -e "${RED}❌${NC}"
+            fi
+        fi
+    done
     
     echo ""
-    echo -e "${GREEN}✅ Services started${NC}"
-    echo ""
+    echo "Run 'ark-services status' to check service status"
 }
 
 stop_services() {
     print_header "⏹️  Stopping ARK Services"
     
+    check_systemd
     local systemctl_cmd=$(get_systemctl_cmd)
     
-    # Stop in reverse order
+    # Stop in reverse dependency order
     for service in ark-backend ark-ollama ark-redis; do
-        if [ -f "$(get_service_dir)/${service}.service" ]; then
-            echo -n "Stopping $service... "
-            $systemctl_cmd stop "${service}.service" 2>/dev/null && echo -e "${GREEN}✅${NC}" || echo -e "${YELLOW}⚠️${NC}"
+        local service_file="$(get_service_dir)/${service}.service"
+        if [ -f "$service_file" ]; then
+            echo -n "Stopping ${service}... "
+            if $systemctl_cmd stop "${service}.service" &>/dev/null; then
+                echo -e "${GREEN}✅${NC}"
+            else
+                echo -e "${YELLOW}⚠️${NC}"
+            fi
         fi
     done
     
     echo ""
     echo -e "${GREEN}✅ Services stopped${NC}"
-    echo ""
 }
 
 restart_services() {
@@ -437,14 +381,15 @@ restart_services() {
 show_status() {
     print_header "📊 ARK Services Status"
     
+    check_systemd
     local systemctl_cmd=$(get_systemctl_cmd)
     
-    for service in ark-backend ark-redis ark-ollama; do
-        if [ -f "$(get_service_dir)/${service}.service" ]; then
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Service: $service"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            $systemctl_cmd status "${service}.service" --no-pager -l || true
+    for service in ark-redis ark-ollama ark-backend; do
+        local service_file="$(get_service_dir)/${service}.service"
+        if [ -f "$service_file" ]; then
+            echo -e "${CYAN}${service}:${NC}"
+            $systemctl_cmd status "${service}.service" --no-pager -l 2>/dev/null | head -n 10 || \
+                echo -e "${YELLOW}  Status unavailable${NC}"
             echo ""
         fi
     done
@@ -453,91 +398,85 @@ show_status() {
 show_logs() {
     local service="${1:-ark-backend}"
     
-    print_header "📄 Service Logs: $service"
-    
+    check_systemd
     local systemctl_cmd=$(get_systemctl_cmd)
     
-    if [ -f "$(get_service_dir)/${service}.service" ]; then
-        if [ "$USE_USER_SERVICES" = true ]; then
-            journalctl --user -u "${service}.service" -n 50 --no-pager
-        else
-            sudo journalctl -u "${service}.service" -n 50 --no-pager
-        fi
-    else
+    print_header "📄 Logs for ${service}"
+    
+    local service_file="$(get_service_dir)/${service}.service"
+    if [ ! -f "$service_file" ]; then
         echo -e "${RED}❌ Service not found: ${service}${NC}"
-        echo "Available services: ark-backend, ark-redis, ark-ollama"
+        echo "Available services: ark-redis, ark-ollama, ark-backend"
+        return 1
     fi
     
-    echo ""
+    if [ "$USE_USER_SERVICES" = true ]; then
+        journalctl --user -u "${service}.service" -n 50 --no-pager
+    else
+        sudo journalctl -u "${service}.service" -n 50 --no-pager
+    fi
 }
 
 uninstall_services() {
     print_header "🗑️  Uninstalling ARK Services"
     
-    echo -e "${YELLOW}⚠️  This will remove all ARK service files${NC}"
-    echo -n "Are you sure? (y/N): "
-    read -r confirm
+    check_systemd
+    
+    echo -e "${YELLOW}⚠️  This will remove all ARK systemd services${NC}"
+    read -p "Are you sure? (y/N): " confirm
     
     if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
         echo "Cancelled."
         return 0
     fi
     
-    # Stop services first
+    # Stop and disable services
     stop_services
-    
-    # Disable services
     disable_services
     
     # Remove service files
-    echo ""
-    echo "Removing service files..."
-    for service in ark-backend ark-redis ark-ollama; do
+    print_section "Removing service files"
+    for service in ark-redis ark-ollama ark-backend; do
         local service_file="$(get_service_dir)/${service}.service"
         if [ -f "$service_file" ]; then
+            echo -n "Removing ${service}... "
             rm -f "$service_file"
-            echo "  Removed: $service"
+            echo -e "${GREEN}✅${NC}"
         fi
     done
     
     # Reload systemd
-    echo ""
-    echo "🔄 Reloading systemd daemon..."
-    if [ "$USE_USER_SERVICES" = true ]; then
-        systemctl --user daemon-reload
-    else
-        sudo systemctl daemon-reload
-    fi
+    local systemctl_cmd=$(get_systemctl_cmd)
+    $systemctl_cmd daemon-reload
     
     echo ""
     echo -e "${GREEN}✅ Services uninstalled${NC}"
-    echo ""
 }
 
 show_help() {
-    echo "ARK Systemd Service Manager"
+    echo "ARK Systemd Services Manager"
     echo ""
     echo "USAGE:"
-    echo "  ark-service install     Install systemd service files"
-    echo "  ark-service enable      Enable auto-start on boot"
-    echo "  ark-service disable     Disable auto-start"
-    echo "  ark-service start       Start all services"
-    echo "  ark-service stop        Stop all services"
-    echo "  ark-service restart     Restart all services"
-    echo "  ark-service status      Show service status"
-    echo "  ark-service logs [srv]  Show service logs"
-    echo "  ark-service uninstall   Remove service files"
-    echo ""
-    echo "EXAMPLES:"
-    echo "  ark-service install                # First-time setup"
-    echo "  ark-service enable && ark-service start   # Enable & start"
-    echo "  ark-service logs ark-backend       # View backend logs"
-    echo "  ark-service status                 # Check all services"
+    echo "  ark-services install           Install systemd services"
+    echo "  ark-services enable            Enable auto-start on boot"
+    echo "  ark-services disable           Disable auto-start"
+    echo "  ark-services start             Start all services"
+    echo "  ark-services stop              Stop all services"
+    echo "  ark-services restart           Restart all services"
+    echo "  ark-services status            Show status of all services"
+    echo "  ark-services logs [service]    View service logs"
+    echo "  ark-services uninstall         Remove systemd services"
     echo ""
     echo "SERVICES:"
-    echo "  • ark-backend  - ARK intelligent backend"
-    echo "  • ark-redis    - Redis data store (if bundled)"
-    echo "  • ark-ollama   - Ollama LLM service (if installed)"
+    echo "  • ark-redis      - Redis database service"
+    echo "  • ark-ollama     - Ollama LLM service"
+    echo "  • ark-backend    - ARK intelligent backend"
+    echo ""
+    echo "EXAMPLES:"
+    echo "  ark-services install          # Set up all services"
+    echo "  ark-services enable           # Enable auto-start"
+    echo "  ark-services start            # Start everything"
+    echo "  ark-services logs ark-backend # View backend logs"
     echo ""
 }
 
@@ -595,53 +534,68 @@ main "$@"
 # INTEGRATION INSTRUCTIONS
 ################################################################################
 #
-# METHOD 1: Add to create-unified-ark.sh (Raspberry Pi)
-# ------------------------------------------------------
+# METHOD 1: Add to create-unified-ark.sh
+# ----------------------------------------
 # 1. Copy this file to enhancements/12-systemd-services.sh
 #
-# 2. In create-unified-ark.sh, after installation, add:
+# 2. In create-unified-ark.sh, add after creating bin directory:
 #
-#    # Install systemd service manager
-#    if command -v systemctl &>/dev/null && [ ! -d "/data/data/com.termux" ]; then
-#        cp enhancements/12-systemd-services.sh "$INSTALL_DIR/bin/ark-service"
-#        chmod +x "$INSTALL_DIR/bin/ark-service"
-#        
-#        # Optional: Auto-install services
-#        if [ "$AUTO_SYSTEMD" = "true" ]; then
-#            "$INSTALL_DIR/bin/ark-service" install
-#            "$INSTALL_DIR/bin/ark-service" enable
+#    # Copy systemd services manager
+#    cp enhancements/12-systemd-services.sh "$INSTALL_DIR/bin/ark-services"
+#    chmod +x "$INSTALL_DIR/bin/ark-services"
+#
+# 3. Add to post-install section (for Linux systems):
+#
+#    if command -v systemctl &>/dev/null; then
+#        echo ""
+#        echo "🔧 Systemd Services (Optional):"
+#        echo ""
+#        read -p "Install systemd services for auto-start? (y/N): " install_services
+#        if [ "$install_services" = "y" ] || [ "$install_services" = "Y" ]; then
+#            "$INSTALL_DIR/bin/ark-services" install
+#            "$INSTALL_DIR/bin/ark-services" enable
 #        fi
 #    fi
 #
-# 3. Add to post-install message:
+# 4. Add to post-install message:
 #
-#    echo "  🚀 Setup services:   ark-service install && ark-service enable"
+#    if command -v systemctl &>/dev/null; then
+#        echo "  🔧 Setup services:   ark-services install"
+#    fi
 #
 #
-# METHOD 2: Manual Installation on Raspberry Pi
-# ----------------------------------------------
-# 1. Copy to ARK bin directory:
-#    cp enhancements/12-systemd-services.sh ~/ark/bin/ark-service
-#    chmod +x ~/ark/bin/ark-service
+# METHOD 2: Manual Installation
+# ------------------------------
+# 1. Copy to your ARK bin directory:
+#    cp enhancements/12-systemd-services.sh ~/ark/bin/ark-services
+#    chmod +x ~/ark/bin/ark-services
 #
-# 2. Install and enable services:
-#    ark-service install
-#    ark-service enable
-#    ark-service start
+# 2. Install services:
+#    ark-services install
+#    ark-services enable
+#    ark-services start
 #
-# 3. Check status:
-#    ark-service status
+# 3. Test:
+#    ark-services status
 #
 #
 # BENEFITS:
 # ---------
-# ✅ Auto-start ARK on boot
+# ✅ Auto-start on boot (perfect for Raspberry Pi)
 # ✅ Automatic restart on failure
-# ✅ Proper service dependency management
-# ✅ Centralized logging with journald
-# ✅ Resource limits protection
-# ✅ User or system service support
-# ✅ Easy service management
-# ✅ Works on Raspberry Pi and Debian/Ubuntu
+# ✅ Proper dependency management
+# ✅ Integrated logging with journald
+# ✅ User-mode services (no root required)
+# ✅ Easy service management commands
+# ✅ Production-ready service configuration
+# ✅ Security hardening built-in
+#
+# IDEAL FOR:
+# ----------
+# • Raspberry Pi installations
+# • Home server deployments
+# • Always-on ARK instances
+# • Production Linux systems
+# • Debian/Ubuntu/Fedora/etc.
 #
 ################################################################################
