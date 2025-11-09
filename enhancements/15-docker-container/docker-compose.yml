@@ -1,99 +1,58 @@
 version: '3.8'
 
-################################################################################
-# ARK Docker Compose Configuration
-# 
-# This compose file includes:
-# - ARK Backend (Node.js + AI)
-# - Redis (Data store)
-# - Ollama (Optional - Local LLM)
-#
-# Usage:
-#   docker-compose up -d              # Start all services
-#   docker-compose down               # Stop all services
-#   docker-compose logs -f ark        # View ARK logs
-#   docker-compose ps                 # Show service status
-################################################################################
-
 services:
-  #############################################################################
-  # Redis - Data Store
-  #############################################################################
-  redis:
-    image: redis:7-alpine
-    container_name: ark-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${ARK_REDIS_PASSWORD:-}
-    ports:
-      - "${ARK_REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - ark-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  #############################################################################
-  # ARK Backend - Intelligent Assistant
-  #############################################################################
   ark:
     build:
       context: ../..
       dockerfile: enhancements/15-docker-container/Dockerfile
-    container_name: ark-backend
+    image: ark:latest
+    container_name: ark-container
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
+    
     ports:
-      - "${ARK_API_PORT:-8000}:8000"
-    environment:
-      # API Configuration
-      ARK_API_PORT: ${ARK_API_PORT:-8000}
-      ARK_API_HOST: 0.0.0.0
-      ARK_DEBUG: ${ARK_DEBUG:-false}
-      
-      # Redis Configuration
-      ARK_REDIS_HOST: redis
-      ARK_REDIS_PORT: 6379
-      ARK_REDIS_PASSWORD: ${ARK_REDIS_PASSWORD:-}
-      
-      # Ollama Configuration (use host Ollama or external)
-      ARK_OLLAMA_HOST: ${ARK_OLLAMA_HOST:-http://host.docker.internal:11434}
-      ARK_OLLAMA_MODEL: ${ARK_OLLAMA_MODEL:-llama3.2:1b}
-      
-      # Advanced Settings
-      ARK_WORKERS: ${ARK_WORKERS:-4}
-      ARK_TIMEOUT: ${ARK_TIMEOUT:-30}
-      ARK_LOG_LEVEL: ${ARK_LOG_LEVEL:-INFO}
+      - "8000:8000"    # ARK API
+      - "6379:6379"    # Redis (optional, if exposing)
+      - "11434:11434"  # Ollama (optional, if exposing)
     
     volumes:
       # Persistent data
-      - ark-data:/ark/data
-      
-      # Optional: Mount config
-      # - ./config:/ark/config:ro
-      
-      # Optional: Mount custom models
-      # - ./models:/ark/models:ro
+      - ark-data:/home/ark/ark/data
+      # Configuration
+      - ./ark.env:/home/ark/ark/.env:ro
     
-    networks:
-      - ark-network
+    environment:
+      - NODE_ENV=production
+      - ARK_API_PORT=8000
+      - ARK_API_HOST=0.0.0.0
+      - ARK_REDIS_HOST=127.0.0.1
+      - ARK_REDIS_PORT=6379
+      - ARK_OLLAMA_HOST=http://127.0.0.1:11434
+      - ARK_OLLAMA_MODEL=llama3.2:1b
+      - ARK_DEBUG=false
     
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    
+    networks:
+      - ark-network
 
-  #############################################################################
-  # Ollama - Local LLM (Optional)
-  # Uncomment to run Ollama in Docker instead of using host Ollama
-  #############################################################################
+  # Optional: Separate Redis container (if you prefer)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ark-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - ark-network
+
+  # Optional: Separate Ollama container
   # ollama:
   #   image: ollama/ollama:latest
   #   container_name: ark-ollama
@@ -104,74 +63,15 @@ services:
   #     - ollama-data:/root/.ollama
   #   networks:
   #     - ark-network
-  #   environment:
-  #     - OLLAMA_HOST=0.0.0.0
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]  # Requires nvidia-docker
 
-################################################################################
-# Networks
-################################################################################
+volumes:
+  ark-data:
+    driver: local
+  # redis-data:
+  #   driver: local
+  # ollama-data:
+  #   driver: local
+
 networks:
   ark-network:
     driver: bridge
-    name: ark-network
-
-################################################################################
-# Volumes
-################################################################################
-volumes:
-  ark-data:
-    name: ark-data
-    driver: local
-  
-  redis-data:
-    name: ark-redis-data
-    driver: local
-  
-  # Uncomment if using Docker Ollama
-  # ollama-data:
-  #   name: ark-ollama-data
-  #   driver: local
-
-################################################################################
-# Additional Notes
-################################################################################
-#
-# Environment Variables:
-# ----------------------
-# Create a .env file in the same directory with:
-#   ARK_API_PORT=8000
-#   ARK_REDIS_PASSWORD=your_secure_password
-#   ARK_OLLAMA_HOST=http://host.docker.internal:11434
-#   ARK_OLLAMA_MODEL=llama3.2:1b
-#   ARK_DEBUG=false
-#
-# Using Host Ollama:
-# ------------------
-# If Ollama is running on host machine:
-#   ARK_OLLAMA_HOST=http://host.docker.internal:11434
-#
-# Using Docker Ollama:
-# --------------------
-# 1. Uncomment the ollama service above
-# 2. Set ARK_OLLAMA_HOST=http://ollama:11434
-# 3. After starting, pull a model:
-#    docker-compose exec ollama ollama pull llama3.2:1b
-#
-# Backing Up Data:
-# ----------------
-#   docker run --rm -v ark-data:/data -v $(pwd):/backup \
-#     alpine tar czf /backup/ark-backup.tar.gz -C /data .
-#
-# Restoring Data:
-# ---------------
-#   docker run --rm -v ark-data:/data -v $(pwd):/backup \
-#     alpine tar xzf /backup/ark-backup.tar.gz -C /data
-#
-################################################################################
