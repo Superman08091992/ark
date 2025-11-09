@@ -1,0 +1,431 @@
+{
+  "meta": {
+    "schema_version": "4.0.0",
+    "compiled_at": "2025-11-09T08:30:00Z",
+    "category": "complete_software_nodes",
+    "total_nodes": 500,
+    "ecosystems": 20
+  },
+  "topics": [
+    {
+      "name": "C_Language",
+      "description": "Low-level systems programming",
+      "nodes": [
+        {"id": "c_hello_world", "type": "template_node", "value": "Hello World in C", "content": "#include <stdio.h>\nint main(){printf(\"Hello\\n\");return 0;}"},
+        {"id": "c_mvc_pattern", "type": "pattern_node", "value": "MVC with structs and function pointers"},
+        {"id": "c_socket_server", "type": "template_node", "value": "TCP socket server"},
+        {"id": "c_file_io", "type": "library_node", "value": "File I/O operations"},
+        {"id": "c_linked_list", "type": "component_node", "value": "Linked list implementation"},
+        {"id": "c_hash_table", "type": "component_node", "value": "Hash table with chaining"},
+        {"id": "c_binary_tree", "type": "component_node", "value": "Binary search tree"},
+        {"id": "c_thread_pool", "type": "pattern_node", "value": "Thread pool with pthreads"},
+        {"id": "c_memory_pool", "type": "pattern_node", "value": "Memory pool allocator"},
+        {"id": "c_makefile", "type": "compiler_node", "value": "Makefile with dependencies"},
+        {"id": "c_cmake", "type": "compiler_node", "value": "CMake build system"},
+        {"id": "c_unit_test", "type": "template_node", "value": "Unit testing with check"},
+        {"id": "c_json_parser", "type": "library_node", "value": "JSON parsing with cJSON"},
+        {"id": "c_http_client", "type": "library_node", "value": "HTTP client with libcurl"},
+        {"id": "c_sqlite", "type": "library_node", "value": "SQLite database integration"}
+      ]
+    },
+    {
+      "name": "Cplusplus",
+      "description": "Object-oriented systems programming",
+      "nodes": [
+        {"id": "cpp_class_basic", "type": "template_node", "value": "Basic class with RAII"},
+        {"id": "cpp_singleton", "type": "pattern_node", "value": "Thread-safe singleton"},
+        {"id": "cpp_factory", "type": "pattern_node", "value": "Factory pattern"},
+        {"id": "cpp_observer", "type": "pattern_node", "value": "Observer pattern"},
+        {"id": "cpp_smart_ptr", "type": "component_node", "value": "Smart pointer usage"},
+        {"id": "cpp_template_meta", "type": "pattern_node", "value": "Template metaprogramming"},
+        {"id": "cpp_stl_containers", "type": "library_node", "value": "STL containers guide"},
+        {"id": "cpp_boost", "type": "library_node", "value": "Boost library integration"},
+        {"id": "cpp_qt_gui", "type": "framework_node", "value": "Qt GUI application"},
+        {"id": "cpp_sdl2_game", "type": "framework_node", "value": "SDL2 game loop"},
+        {"id": "cpp_opencv", "type": "library_node", "value": "OpenCV image processing"},
+        {"id": "cpp_eigen", "type": "library_node", "value": "Eigen matrix operations"},
+        {"id": "cpp_grpc", "type": "library_node", "value": "gRPC service"},
+        {"id": "cpp_cmake_modern", "type": "compiler_node", "value": "Modern CMake 3.x"},
+        {"id": "cpp_gtest", "type": "template_node", "value": "Google Test unit tests"}
+      ]
+    },
+    {
+      "name": "Java",
+      "description": "Enterprise and portable applications",
+      "nodes": [
+        {"id": "java_spring_boot", "type": "framework_node", "value": "Spring Boot REST API"},
+        {"id": "java_spring_mvc", "type": "framework_node", "value": "Spring MVC web app"},
+        {"id": "java_hibernate", "type": "library_node", "value": "Hibernate ORM"},
+        {"id": "java_jdbc", "type": "library_node", "value": "JDBC connection pool"},
+        {"id": "java_servlet", "type": "component_node", "value": "HTTP servlet"},
+        {"id": "java_jsp", "type": "component_node", "value": "JSP view template"},
+        {"id": "java_maven", "type": "compiler_node", "value": "Maven build config"},
+        {"id": "java_gradle", "type": "compiler_node", "value": "Gradle build script"},
+        {"id": "java_junit", "type": "template_node", "value": "JUnit test suite"},
+        {"id": "java_mockito", "type": "library_node", "value": "Mockito mocking"},
+        {"id": "java_jackson", "type": "library_node", "value": "Jackson JSON"},
+        {"id": "java_log4j", "type": "library_node", "value": "Log4j logging"},
+        {"id": "java_kafka", "type": "library_node", "value": "Kafka producer/consumer"},
+        {"id": "java_redis", "type": "library_node", "value": "Redis Jedis client"},
+        {"id": "java_docker", "type": "compiler_node", "value": "Dockerfile for Spring Boot"}
+      ]
+    },
+    {
+      "name": "TypeScript",
+      "description": "Typed JavaScript for modern apps",
+      "nodes": [
+        {"id": "ts_react_component", "type": "component_node", "value": "React functional component"},
+        {"id": "ts_react_hooks", "type": "pattern_node", "value": "React hooks patterns"},
+        {"id": "ts_react_context", "type": "pattern_node", "value": "Context API pattern"},
+        {"id": "ts_redux", "type": "library_node", "value": "Redux state management"},
+        {"id": "ts_express_api", "type": "framework_node", "value": "Express REST API"},
+        {"id": "ts_nestjs", "type": "framework_node", "value": "NestJS API framework"},
+        {"id": "ts_graphql", "type": "library_node", "value": "GraphQL with Apollo"},
+        {"id": "ts_prisma", "type": "library_node", "value": "Prisma ORM"},
+        {"id": "ts_typeorm", "type": "library_node", "value": "TypeORM database"},
+        {"id": "ts_jest", "type": "template_node", "value": "Jest unit tests"},
+        {"id": "ts_cypress", "type": "template_node", "value": "Cypress E2E tests"},
+        {"id": "ts_webpack", "type": "compiler_node", "value": "Webpack configuration"},
+        {"id": "ts_vite", "type": "compiler_node", "value": "Vite build config"},
+        {"id": "ts_nextjs", "type": "framework_node", "value": "Next.js app"},
+        {"id": "ts_svelte", "type": "framework_node", "value": "SvelteKit app"}
+      ]
+    },
+    {
+      "name": "JavaScript",
+      "description": "Dynamic web programming",
+      "nodes": [
+        {"id": "js_vanilla_spa", "type": "template_node", "value": "Vanilla JS SPA"},
+        {"id": "js_module_pattern", "type": "pattern_node", "value": "Module pattern"},
+        {"id": "js_promise_async", "type": "pattern_node", "value": "Promises and async/await"},
+        {"id": "js_event_emitter", "type": "pattern_node", "value": "Event emitter"},
+        {"id": "js_fetch_api", "type": "library_node", "value": "Fetch API usage"},
+        {"id": "js_websocket", "type": "library_node", "value": "WebSocket client"},
+        {"id": "js_localstorage", "type": "library_node", "value": "LocalStorage wrapper"},
+        {"id": "js_indexeddb", "type": "library_node", "value": "IndexedDB wrapper"},
+        {"id": "js_service_worker", "type": "component_node", "value": "Service worker PWA"},
+        {"id": "js_web_worker", "type": "component_node", "value": "Web Worker threading"},
+        {"id": "js_canvas", "type": "library_node", "value": "Canvas 2D drawing"},
+        {"id": "js_webgl", "type": "library_node", "value": "WebGL 3D graphics"},
+        {"id": "js_d3", "type": "library_node", "value": "D3.js visualizations"},
+        {"id": "js_threejs", "type": "library_node", "value": "Three.js 3D engine"},
+        {"id": "js_electron", "type": "framework_node", "value": "Electron desktop app"}
+      ]
+    },
+    {
+      "name": "Python",
+      "description": "High-level scripting and AI",
+      "nodes": [
+        {"id": "py_fastapi", "type": "framework_node", "value": "FastAPI REST service"},
+        {"id": "py_flask", "type": "framework_node", "value": "Flask web app"},
+        {"id": "py_django", "type": "framework_node", "value": "Django full-stack"},
+        {"id": "py_sqlalchemy", "type": "library_node", "value": "SQLAlchemy ORM"},
+        {"id": "py_pandas", "type": "library_node", "value": "Pandas data analysis"},
+        {"id": "py_numpy", "type": "library_node", "value": "NumPy arrays"},
+        {"id": "py_matplotlib", "type": "library_node", "value": "Matplotlib plotting"},
+        {"id": "py_tensorflow", "type": "library_node", "value": "TensorFlow training"},
+        {"id": "py_pytorch", "type": "library_node", "value": "PyTorch neural nets"},
+        {"id": "py_scikit", "type": "library_node", "value": "Scikit-learn ML"},
+        {"id": "py_opencv", "type": "library_node", "value": "OpenCV image processing"},
+        {"id": "py_selenium", "type": "library_node", "value": "Selenium web scraping"},
+        {"id": "py_beautifulsoup", "type": "library_node", "value": "BeautifulSoup parsing"},
+        {"id": "py_asyncio", "type": "pattern_node", "value": "Asyncio patterns"},
+        {"id": "py_pytest", "type": "template_node", "value": "Pytest test suite"}
+      ]
+    },
+    {
+      "name": "Go",
+      "description": "Concurrent systems language",
+      "nodes": [
+        {"id": "go_http_server", "type": "template_node", "value": "HTTP server with goroutines"},
+        {"id": "go_gin_api", "type": "framework_node", "value": "Gin REST API"},
+        {"id": "go_grpc_service", "type": "framework_node", "value": "gRPC microservice"},
+        {"id": "go_goroutine", "type": "pattern_node", "value": "Goroutine patterns"},
+        {"id": "go_channel", "type": "pattern_node", "value": "Channel communication"},
+        {"id": "go_context", "type": "pattern_node", "value": "Context cancellation"},
+        {"id": "go_gorm", "type": "library_node", "value": "GORM ORM"},
+        {"id": "go_redis", "type": "library_node", "value": "Redis client"},
+        {"id": "go_postgres", "type": "library_node", "value": "PostgreSQL driver"},
+        {"id": "go_mongo", "type": "library_node", "value": "MongoDB driver"},
+        {"id": "go_docker", "type": "compiler_node", "value": "Multi-stage Dockerfile"},
+        {"id": "go_mod", "type": "compiler_node", "value": "Go modules"},
+        {"id": "go_test", "type": "template_node", "value": "Testing with testify"},
+        {"id": "go_benchmark", "type": "template_node", "value": "Benchmark tests"},
+        {"id": "go_cli", "type": "template_node", "value": "CLI with Cobra"}
+      ]
+    },
+    {
+      "name": "Rust",
+      "description": "Memory-safe systems programming",
+      "nodes": [
+        {"id": "rust_hello", "type": "template_node", "value": "Hello World in Rust"},
+        {"id": "rust_ownership", "type": "pattern_node", "value": "Ownership patterns"},
+        {"id": "rust_traits", "type": "pattern_node", "value": "Trait implementation"},
+        {"id": "rust_async", "type": "pattern_node", "value": "Async/await with Tokio"},
+        {"id": "rust_actix", "type": "framework_node", "value": "Actix web framework"},
+        {"id": "rust_rocket", "type": "framework_node", "value": "Rocket web framework"},
+        {"id": "rust_diesel", "type": "library_node", "value": "Diesel ORM"},
+        {"id": "rust_sqlx", "type": "library_node", "value": "SQLx async database"},
+        {"id": "rust_serde", "type": "library_node", "value": "Serde serialization"},
+        {"id": "rust_reqwest", "type": "library_node", "value": "Reqwest HTTP client"},
+        {"id": "rust_cargo", "type": "compiler_node", "value": "Cargo.toml config"},
+        {"id": "rust_test", "type": "template_node", "value": "Unit tests"},
+        {"id": "rust_wasm", "type": "framework_node", "value": "WebAssembly with wasm-pack"},
+        {"id": "rust_embedded", "type": "framework_node", "value": "Embedded Rust"},
+        {"id": "rust_cli", "type": "template_node", "value": "CLI with Clap"}
+      ]
+    },
+    {
+      "name": "Kotlin_Android",
+      "description": "Modern Android development",
+      "nodes": [
+        {"id": "kotlin_activity", "type": "template_node", "value": "Activity with ViewModel"},
+        {"id": "kotlin_fragment", "type": "component_node", "value": "Fragment lifecycle"},
+        {"id": "kotlin_compose", "type": "framework_node", "value": "Jetpack Compose UI"},
+        {"id": "kotlin_room", "type": "library_node", "value": "Room database"},
+        {"id": "kotlin_retrofit", "type": "library_node", "value": "Retrofit API client"},
+        {"id": "kotlin_coroutines", "type": "pattern_node", "value": "Coroutines patterns"},
+        {"id": "kotlin_flow", "type": "pattern_node", "value": "Flow reactive streams"},
+        {"id": "kotlin_hilt", "type": "library_node", "value": "Hilt dependency injection"},
+        {"id": "kotlin_navigation", "type": "library_node", "value": "Navigation component"},
+        {"id": "kotlin_workmanager", "type": "library_node", "value": "WorkManager background"},
+        {"id": "kotlin_datastore", "type": "library_node", "value": "DataStore preferences"},
+        {"id": "kotlin_glide", "type": "library_node", "value": "Glide image loading"},
+        {"id": "kotlin_gradle", "type": "compiler_node", "value": "build.gradle.kts"},
+        {"id": "kotlin_test", "type": "template_node", "value": "JUnit tests"},
+        {"id": "kotlin_espresso", "type": "template_node", "value": "Espresso UI tests"}
+      ]
+    },
+    {
+      "name": "Swift_iOS",
+      "description": "iOS and macOS development",
+      "nodes": [
+        {"id": "swift_viewcontroller", "type": "template_node", "value": "UIViewController template"},
+        {"id": "swift_swiftui", "type": "framework_node", "value": "SwiftUI views"},
+        {"id": "swift_combine", "type": "pattern_node", "value": "Combine reactive"},
+        {"id": "swift_async_await", "type": "pattern_node", "value": "Async/await patterns"},
+        {"id": "swift_coredata", "type": "library_node", "value": "CoreData persistence"},
+        {"id": "swift_urlsession", "type": "library_node", "value": "URLSession networking"},
+        {"id": "swift_alamofire", "type": "library_node", "value": "Alamofire HTTP"},
+        {"id": "swift_kingfisher", "type": "library_node", "value": "Kingfisher image loading"},
+        {"id": "swift_snapkit", "type": "library_node", "value": "SnapKit auto layout"},
+        {"id": "swift_rxswift", "type": "library_node", "value": "RxSwift reactive"},
+        {"id": "swift_spm", "type": "compiler_node", "value": "Swift Package Manager"},
+        {"id": "swift_xctest", "type": "template_node", "value": "XCTest unit tests"},
+        {"id": "swift_xcuitest", "type": "template_node", "value": "XCUITest UI tests"},
+        {"id": "swift_widgetkit", "type": "framework_node", "value": "WidgetKit widgets"},
+        {"id": "swift_watchos", "type": "framework_node", "value": "WatchOS app"}
+      ]
+    },
+    {
+      "name": "CSharp_DotNet",
+      "description": ".NET and Unity development",
+      "nodes": [
+        {"id": "cs_asp_net_core", "type": "framework_node", "value": "ASP.NET Core API"},
+        {"id": "cs_mvc", "type": "framework_node", "value": "ASP.NET MVC"},
+        {"id": "cs_blazor", "type": "framework_node", "value": "Blazor web app"},
+        {"id": "cs_entity_framework", "type": "library_node", "value": "Entity Framework"},
+        {"id": "cs_dapper", "type": "library_node", "value": "Dapper micro-ORM"},
+        {"id": "cs_linq", "type": "pattern_node", "value": "LINQ patterns"},
+        {"id": "cs_async", "type": "pattern_node", "value": "Async/await patterns"},
+        {"id": "cs_dependency_injection", "type": "pattern_node", "value": "DI container"},
+        {"id": "cs_signalr", "type": "library_node", "value": "SignalR real-time"},
+        {"id": "cs_newtonsoft", "type": "library_node", "value": "Newtonsoft JSON"},
+        {"id": "cs_xunit", "type": "template_node", "value": "xUnit tests"},
+        {"id": "cs_moq", "type": "library_node", "value": "Moq mocking"},
+        {"id": "cs_docker", "type": "compiler_node", "value": "Dockerfile for .NET"},
+        {"id": "cs_nuget", "type": "compiler_node", "value": "NuGet package config"},
+        {"id": "cs_wpf", "type": "framework_node", "value": "WPF desktop app"}
+      ]
+    },
+    {
+      "name": "Unity_Game",
+      "description": "Unity game engine",
+      "nodes": [
+        {"id": "unity_monobehaviour", "type": "template_node", "value": "MonoBehaviour script"},
+        {"id": "unity_scriptableobject", "type": "component_node", "value": "ScriptableObject data"},
+        {"id": "unity_coroutine", "type": "pattern_node", "value": "Coroutine patterns"},
+        {"id": "unity_singleton", "type": "pattern_node", "value": "Singleton manager"},
+        {"id": "unity_object_pool", "type": "pattern_node", "value": "Object pooling"},
+        {"id": "unity_input_system", "type": "library_node", "value": "New Input System"},
+        {"id": "unity_cinemachine", "type": "library_node", "value": "Cinemachine camera"},
+        {"id": "unity_timeline", "type": "library_node", "value": "Timeline cutscenes"},
+        {"id": "unity_animator", "type": "component_node", "value": "Animator controller"},
+        {"id": "unity_navmesh", "type": "library_node", "value": "NavMesh AI"},
+        {"id": "unity_addressables", "type": "library_node", "value": "Addressables assets"},
+        {"id": "unity_shader", "type": "component_node", "value": "Shader graph"},
+        {"id": "unity_vfx", "type": "library_node", "value": "VFX Graph particles"},
+        {"id": "unity_multiplayer", "type": "framework_node", "value": "Netcode multiplayer"},
+        {"id": "unity_mobile", "type": "template_node", "value": "Mobile optimization"}
+      ]
+    },
+    {
+      "name": "Unreal_Engine",
+      "description": "Unreal Engine game development",
+      "nodes": [
+        {"id": "unreal_actor", "type": "template_node", "value": "Actor class"},
+        {"id": "unreal_character", "type": "component_node", "value": "Character controller"},
+        {"id": "unreal_pawn", "type": "component_node", "value": "Pawn controller"},
+        {"id": "unreal_gamemode", "type": "component_node", "value": "GameMode base"},
+        {"id": "unreal_blueprint", "type": "pattern_node", "value": "Blueprint callable functions"},
+        {"id": "unreal_ue5_nanite", "type": "framework_node", "value": "UE5 Nanite"},
+        {"id": "unreal_ue5_lumen", "type": "framework_node", "value": "UE5 Lumen"},
+        {"id": "unreal_gameplay_ability", "type": "framework_node", "value": "Gameplay Ability System"},
+        {"id": "unreal_enhanced_input", "type": "library_node", "value": "Enhanced Input"},
+        {"id": "unreal_umg", "type": "library_node", "value": "UMG UI widgets"},
+        {"id": "unreal_niagara", "type": "library_node", "value": "Niagara VFX"},
+        {"id": "unreal_metasound", "type": "library_node", "value": "MetaSound audio"},
+        {"id": "unreal_replication", "type": "pattern_node", "value": "Network replication"},
+        {"id": "unreal_cpp_optimization", "type": "pattern_node", "value": "C++ optimization"},
+        {"id": "unreal_plugin", "type": "template_node", "value": "Plugin creation"}
+      ]
+    },
+    {
+      "name": "SQL_Databases",
+      "description": "Relational database systems",
+      "nodes": [
+        {"id": "sql_postgres_schema", "type": "template_node", "value": "PostgreSQL schema"},
+        {"id": "sql_postgres_index", "type": "component_node", "value": "Index optimization"},
+        {"id": "sql_postgres_jsonb", "type": "library_node", "value": "JSONB operations"},
+        {"id": "sql_mysql_stored_proc", "type": "component_node", "value": "MySQL stored procedure"},
+        {"id": "sql_mysql_trigger", "type": "component_node", "value": "MySQL trigger"},
+        {"id": "sql_sqlite_pragma", "type": "library_node", "value": "SQLite pragma"},
+        {"id": "sql_migration", "type": "pattern_node", "value": "Migration strategy"},
+        {"id": "sql_orm_mapping", "type": "pattern_node", "value": "ORM entity mapping"},
+        {"id": "sql_transaction", "type": "pattern_node", "value": "Transaction patterns"},
+        {"id": "sql_connection_pool", "type": "pattern_node", "value": "Connection pooling"},
+        {"id": "sql_query_optimization", "type": "pattern_node", "value": "Query optimization"},
+        {"id": "sql_partitioning", "type": "pattern_node", "value": "Table partitioning"},
+        {"id": "sql_replication", "type": "pattern_node", "value": "Master-slave replication"},
+        {"id": "sql_backup", "type": "template_node", "value": "Backup strategy"},
+        {"id": "sql_normalization", "type": "pattern_node", "value": "Database normalization"}
+      ]
+    },
+    {
+      "name": "NoSQL_Databases",
+      "description": "Document and key-value stores",
+      "nodes": [
+        {"id": "mongo_schema", "type": "template_node", "value": "MongoDB schema"},
+        {"id": "mongo_aggregation", "type": "pattern_node", "value": "Aggregation pipeline"},
+        {"id": "mongo_mongoose", "type": "library_node", "value": "Mongoose ODM"},
+        {"id": "redis_cache", "type": "pattern_node", "value": "Redis caching"},
+        {"id": "redis_pub_sub", "type": "pattern_node", "value": "Redis pub/sub"},
+        {"id": "redis_streams", "type": "library_node", "value": "Redis Streams"},
+        {"id": "dynamodb_table", "type": "template_node", "value": "DynamoDB table design"},
+        {"id": "dynamodb_gsi", "type": "component_node", "value": "Global secondary index"},
+        {"id": "firestore_realtime", "type": "library_node", "value": "Firestore real-time"},
+        {"id": "firestore_security", "type": "pattern_node", "value": "Security rules"},
+        {"id": "cassandra_keyspace", "type": "template_node", "value": "Cassandra keyspace"},
+        {"id": "elasticsearch_index", "type": "template_node", "value": "Elasticsearch index"},
+        {"id": "elasticsearch_query", "type": "pattern_node", "value": "Query DSL"},
+        {"id": "couchdb_design", "type": "template_node", "value": "CouchDB design doc"},
+        {"id": "neo4j_graph", "type": "template_node", "value": "Neo4j graph model"}
+      ]
+    },
+    {
+      "name": "DevOps_Cloud",
+      "description": "Cloud infrastructure and deployment",
+      "nodes": [
+        {"id": "docker_compose", "type": "template_node", "value": "Docker Compose stack"},
+        {"id": "docker_multi_stage", "type": "pattern_node", "value": "Multi-stage build"},
+        {"id": "kubernetes_deployment", "type": "template_node", "value": "K8s deployment"},
+        {"id": "kubernetes_service", "type": "component_node", "value": "K8s service"},
+        {"id": "kubernetes_ingress", "type": "component_node", "value": "K8s ingress"},
+        {"id": "helm_chart", "type": "template_node", "value": "Helm chart"},
+        {"id": "terraform_aws", "type": "template_node", "value": "Terraform AWS"},
+        {"id": "terraform_gcp", "type": "template_node", "value": "Terraform GCP"},
+        {"id": "ansible_playbook", "type": "template_node", "value": "Ansible playbook"},
+        {"id": "github_actions", "type": "template_node", "value": "GitHub Actions CI/CD"},
+        {"id": "gitlab_ci", "type": "template_node", "value": "GitLab CI pipeline"},
+        {"id": "jenkins_pipeline", "type": "template_node", "value": "Jenkins pipeline"},
+        {"id": "aws_lambda", "type": "template_node", "value": "AWS Lambda function"},
+        {"id": "aws_ecs", "type": "template_node", "value": "AWS ECS service"},
+        {"id": "nginx_config", "type": "template_node", "value": "Nginx configuration"}
+      ]
+    },
+    {
+      "name": "Web_Frontend",
+      "description": "Modern web interfaces",
+      "nodes": [
+        {"id": "html5_semantic", "type": "template_node", "value": "Semantic HTML5"},
+        {"id": "css_grid", "type": "pattern_node", "value": "CSS Grid layout"},
+        {"id": "css_flexbox", "type": "pattern_node", "value": "Flexbox layout"},
+        {"id": "css_animations", "type": "component_node", "value": "CSS animations"},
+        {"id": "sass_architecture", "type": "pattern_node", "value": "SASS 7-1 pattern"},
+        {"id": "tailwind_config", "type": "template_node", "value": "Tailwind configuration"},
+        {"id": "bootstrap_theme", "type": "template_node", "value": "Bootstrap theme"},
+        {"id": "responsive_design", "type": "pattern_node", "value": "Mobile-first design"},
+        {"id": "pwa_manifest", "type": "template_node", "value": "PWA manifest"},
+        {"id": "webpack_config", "type": "compiler_node", "value": "Webpack config"},
+        {"id": "vite_config", "type": "compiler_node", "value": "Vite config"},
+        {"id": "accessibility_aria", "type": "pattern_node", "value": "ARIA accessibility"},
+        {"id": "seo_meta", "type": "component_node", "value": "SEO meta tags"},
+        {"id": "web_components", "type": "framework_node", "value": "Web Components"},
+        {"id": "lit_element", "type": "framework_node", "value": "Lit Element"}
+      ]
+    },
+    {
+      "name": "Machine_Learning",
+      "description": "AI and ML implementations",
+      "nodes": [
+        {"id": "ml_linear_regression", "type": "template_node", "value": "Linear regression"},
+        {"id": "ml_neural_network", "type": "template_node", "value": "Neural network"},
+        {"id": "ml_cnn", "type": "template_node", "value": "CNN for images"},
+        {"id": "ml_rnn", "type": "template_node", "value": "RNN for sequences"},
+        {"id": "ml_transformer", "type": "template_node", "value": "Transformer model"},
+        {"id": "ml_bert", "type": "library_node", "value": "BERT fine-tuning"},
+        {"id": "ml_gpt", "type": "library_node", "value": "GPT integration"},
+        {"id": "ml_stable_diffusion", "type": "library_node", "value": "Stable Diffusion"},
+        {"id": "ml_yolo", "type": "library_node", "value": "YOLO object detection"},
+        {"id": "ml_reinforcement", "type": "pattern_node", "value": "RL training loop"},
+        {"id": "ml_mlflow", "type": "library_node", "value": "MLflow tracking"},
+        {"id": "ml_tensorboard", "type": "library_node", "value": "TensorBoard logging"},
+        {"id": "ml_onnx", "type": "library_node", "value": "ONNX export"},
+        {"id": "ml_quantization", "type": "pattern_node", "value": "Model quantization"},
+        {"id": "ml_deployment", "type": "template_node", "value": "ML model serving"}
+      ]
+    },
+    {
+      "name": "Blockchain_Web3",
+      "description": "Blockchain and decentralized apps",
+      "nodes": [
+        {"id": "solidity_contract", "type": "template_node", "value": "Solidity smart contract"},
+        {"id": "solidity_erc20", "type": "template_node", "value": "ERC-20 token"},
+        {"id": "solidity_erc721", "type": "template_node", "value": "ERC-721 NFT"},
+        {"id": "hardhat_config", "type": "compiler_node", "value": "Hardhat config"},
+        {"id": "truffle_config", "type": "compiler_node", "value": "Truffle config"},
+        {"id": "web3js_integration", "type": "library_node", "value": "Web3.js"},
+        {"id": "ethersjs_integration", "type": "library_node", "value": "Ethers.js"},
+        {"id": "metamask_connect", "type": "component_node", "value": "MetaMask connection"},
+        {"id": "ipfs_storage", "type": "library_node", "value": "IPFS file storage"},
+        {"id": "thegraph_subgraph", "type": "template_node", "value": "The Graph subgraph"},
+        {"id": "chainlink_oracle", "type": "library_node", "value": "Chainlink oracle"},
+        {"id": "rust_solana", "type": "template_node", "value": "Solana program"},
+        {"id": "cosmwasm_contract", "type": "template_node", "value": "CosmWasm contract"},
+        {"id": "near_contract", "type": "template_node", "value": "NEAR contract"},
+        {"id": "polkadot_substrate", "type": "framework_node", "value": "Substrate chain"}
+      ]
+    },
+    {
+      "name": "Security_Crypto",
+      "description": "Security and cryptography",
+      "nodes": [
+        {"id": "crypto_aes", "type": "library_node", "value": "AES encryption"},
+        {"id": "crypto_rsa", "type": "library_node", "value": "RSA key pair"},
+        {"id": "crypto_hash", "type": "library_node", "value": "SHA-256 hashing"},
+        {"id": "crypto_jwt", "type": "pattern_node", "value": "JWT authentication"},
+        {"id": "crypto_oauth2", "type": "pattern_node", "value": "OAuth2 flow"},
+        {"id": "crypto_tls", "type": "library_node", "value": "TLS/SSL setup"},
+        {"id": "security_cors", "type": "pattern_node", "value": "CORS configuration"},
+        {"id": "security_csp", "type": "pattern_node", "value": "Content Security Policy"},
+        {"id": "security_xss", "type": "pattern_node", "value": "XSS prevention"},
+        {"id": "security_sql_injection", "type": "pattern_node", "value": "SQL injection prevention"},
+        {"id": "security_rate_limit", "type": "pattern_node", "value": "Rate limiting"},
+        {"id": "security_firewall", "type": "template_node", "value": "Firewall rules"},
+        {"id": "security_penetration", "type": "template_node", "value": "Penetration testing"},
+        {"id": "security_audit", "type": "template_node", "value": "Security audit checklist"},
+        {"id": "security_vault", "type": "library_node", "value": "HashiCorp Vault"}
+      ]
+    }
+  ]
+}
