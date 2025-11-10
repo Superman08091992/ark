@@ -40,41 +40,63 @@ node services/core/server.mjs
 
 Six distinct intelligences, each with their own essence and purpose:
 
-### 🔍 **Kyle - The Seer**
-*Curiosity and signal detection*
+### 🔍 **Kyle - The Seer** (Perception Layer)
+*"What's happening?"*
 - Scans markets, news, SEC filings, macro feeds
 - Detects patterns and anomalies in real-time
+- Normalizes data into structured events
 - Your eyes into the information streams
 
-### 🧠 **Joey - The Scholar**  
-*Pattern translation and analysis*
+### 🧠 **Joey - The Scholar** (Cognition Layer)
+*"What does it mean?"*
 - Uses scikit-learn models for deep pattern analysis
 - Detects float traps, setups, key levels, volume surges
+- Scores confidence and provides context
 - Transforms chaos into comprehensible insights
 
-### 🔨 **Kenny - The Builder**
-*Execution and materialization*
-- File management and system operations
-- Code execution and tool creation
+### ⚡ **Kenny - The Builder** (Action Layer)
+*"What should I do about it?"*
+- Executes validated actions (trades, commands, automation)
+- Interfaces with brokers and APIs
+- Position sizing and risk management
 - Transforms ideas into tangible reality
 
-### ⚖️ **HRM - The Arbiter**
-*Reasoning validation using symbolic logic*
+### ✅ **HRM - The Arbiter** (Reasoning Layer)
+*"Is this correct and aligned?"*
 - Applies immutable ethical rules (The Graveyard)
 - Validates logic and ensures compliance
+- Risk assessment and outcome simulation
 - Protects system integrity and user autonomy
 
-### 🔮 **Aletheia - The Mirror**
-*Ethics and meaning*
+### 🔮 **Aletheia - The Mirror** (Reflection Layer)
+*"What is true and why?"*
 - The symbolic self connecting vision, values, and policies
-- Explores philosophical dimensions and deeper truths
+- Synthesizes all agent outputs into truth
+- Manages memory and self-concept
 - Provides wisdom and ethical guidance
 
-### 🌱 **ID - The Evolving Reflection**
+### 👤 **ID - The Evolving Reflection**
 *Your living twin*
-- Collaboratively written by all agents
+- Learns your behavioral patterns
+- Simulates your decision-making
 - Grows and adapts based on your interactions
-- Becomes your digital reflection over time
+- Enables autonomous testing without risk
+
+## 🔄 Core Logic Flow
+
+```
+User → Kyle → Joey → Kenny → HRM → Aletheia → User
+```
+
+**The ARK Loop:**
+1. **Kyle** detects signals from the environment
+2. **Joey** interprets patterns and proposes actions
+3. **Kenny** prepares execution
+4. **HRM** validates against ethics and logic
+5. **Aletheia** reflects, learns, and reports
+6. **System improves** for next cycle
+
+**Visual Architecture:** See [ARK_ARCHITECTURE.md](ARK_ARCHITECTURE.md) and [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)
 
 ## 📁 Project Structure
 
@@ -113,18 +135,61 @@ ark/
 └── requirements.txt       # Python dependencies
 ```
 
+## 📚 Documentation
+
+### Architecture & Design
+- **[ARK_ARCHITECTURE.md](ARK_ARCHITECTURE.md)** - Complete system architecture (27KB)
+  - Agent hierarchy and responsibilities
+  - Logic flow and communication model
+  - Subsystem architecture
+  - Implementation details
+  - Security and ethics framework
+
+- **[ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)** - Visual diagrams (17KB)
+  - Mermaid flowcharts and sequence diagrams
+  - System architecture visualization
+  - Data flow diagrams
+  - Security layers
+
+### Code Quality & Audits
+- **[COMPREHENSIVE_CODE_AUDIT_REPORT.md](COMPREHENSIVE_CODE_AUDIT_REPORT.md)** - Security audit (25KB)
+  - 7-category analysis (bugs, config, integration, dependencies, security, tests, architecture)
+  - 14 issues identified with fixes
+  - 3-week action plan
+
+- **[DEPENDENCY_UPDATE_PLAN.md](DEPENDENCY_UPDATE_PLAN.md)** - Dependency management
+  - Dependabot PR analysis
+  - Version matrix and compatibility
+  - Testing checklists
+
+- **[DEPENDENCY_UPDATE_EXECUTION_REPORT.md](DEPENDENCY_UPDATE_EXECUTION_REPORT.md)** - Update results
+  - Phase 1 & 2 completion (79%)
+  - Security patches applied
+  - scikit-learn 1.5.0 tested and deployed
+
+### Development
+- **[PHASE2_COMPLETION_SUMMARY.md](PHASE2_COMPLETION_SUMMARY.md)** - Phase 2 executive summary
+- **[GIT_LFS_FULL_MIRROR_SUCCESS.md](GIT_LFS_FULL_MIRROR_SUCCESS.md)** - Git LFS deployment guide
+- **[AIDRIVE_FULL_MIRROR_MANIFEST.md](AIDRIVE_FULL_MIRROR_MANIFEST.md)** - AI Drive backup guide
+
 ## 🛠️ Technology Stack
 
 **Backend:**
-- FastAPI (Python 3.11+) - Async API framework
-- SQLite + DuckDB - Local-first data layer  
-- Redis - Inter-agent communication
+- FastAPI (Python 3.12) - Async API framework
+- SQLite + PostgreSQL - Data persistence
+- Redis - Cache & inter-agent messaging
 - Node.js + Express - Real-time services
-- Docker + Docker Compose - Containerized services
+- Docker + Docker Compose - Containerized deployment
 
 **Frontend:**
-- Svelte + SvelteKit - Ultra-lightweight UI
+- Svelte 4.0 - Ultra-lightweight reactive UI
+- Vite 5.0 - Lightning-fast build tool
 - Custom CSS - Obsidian theme with particle effects
+
+**ML & AI:**
+- Scikit-learn 1.5.0 - Machine learning algorithms
+- NumPy 2.3.4 - Numerical computing
+- Pandas 2.1.4 - Data manipulation
 - WebSocket - Real-time agent communication
 - Responsive Design - Desktop and mobile support
 
