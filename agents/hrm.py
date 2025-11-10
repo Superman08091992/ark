@@ -20,6 +20,9 @@ from graveyard.ethics import (
     ETHICAL_CATEGORIES
 )
 
+# Import hierarchical reasoning
+from reasoning.hierarchical_reasoner import HierarchicalReasoner
+
 logger = logging.getLogger(__name__)
 
 class HRMAgent(BaseAgent):
@@ -52,7 +55,14 @@ class HRMAgent(BaseAgent):
         self.immutable_rules = get_rules()  # Read-only copy
         self.ethical_categories = get_categories()  # Read-only copy
         
+        # Initialize hierarchical reasoner (inter-agent reasoning)
+        self.hierarchical_reasoner = HierarchicalReasoner(
+            hrm_agent=self,
+            enable_adaptive_triggering=True  # Smart triggering for minimal latency
+        )
+        
         logger.info(f"HRM initialized with {len(self.immutable_rules)} Graveyard rules")
+        logger.info("Hierarchical reasoning enabled (adaptive mode)")
     
     async def process_message(self, message: str) -> Dict[str, Any]:
         """Process user message with HRM's logical and ethical perspective"""
@@ -566,6 +576,85 @@ I serve not as master, but as guardian. What requires validation or enforcement?
         except Exception as e:
             logger.error(f"Action validation error: {str(e)}")
             return {'success': False, 'error': str(e)}
+    
+    async def validate_action_hierarchical(
+        self, 
+        action: Dict[str, Any], 
+        agent_name: str = "Unknown",
+        force_full_reasoning: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Validate an action using hierarchical inter-agent reasoning.
+        
+        This is the NEW API that implements multi-level reasoning:
+        - Level 1: Graveyard validation (always)
+        - Level 2-4: Conditional consultation with Joey/Aletheia/Kenny
+        - Level 5: Synthesis decision (always)
+        
+        Args:
+            action: Action to validate
+            agent_name: Name of proposing agent
+            force_full_reasoning: If True, execute all levels (bypass adaptive)
+        
+        Returns:
+            Dict with hierarchical decision and reasoning path
+        """
+        try:
+            # Execute hierarchical reasoning
+            if force_full_reasoning:
+                decision = await self.hierarchical_reasoner.reason(
+                    action=action,
+                    agent_name=agent_name,
+                    force_levels=[1, 2, 3, 4, 5]  # Force all levels
+                )
+            else:
+                decision = await self.hierarchical_reasoner.reason(
+                    action=action,
+                    agent_name=agent_name
+                )
+            
+            # Update statistics
+            memory = self.get_memory()
+            memory['hierarchical_validations'] = memory.get('hierarchical_validations', 0) + 1
+            if decision.final_decision == 'denied':
+                memory['violations_prevented'] = memory.get('violations_prevented', 0) + 1
+            self.save_memory(memory)
+            
+            logger.info(
+                f"HRM hierarchical validation from {agent_name}: "
+                f"decision={decision.final_decision}, "
+                f"confidence={decision.confidence:.2f}, "
+                f"duration={decision.total_duration_ms:.1f}ms, "
+                f"levels={[lvl.level for lvl in decision.levels_executed if lvl.executed]}"
+            )
+            
+            return {
+                'success': True,
+                'data': {
+                    'decision': decision.final_decision,
+                    'confidence': decision.confidence,
+                    'approved': decision.final_decision == 'approved',
+                    'reasoning_path': decision.reasoning_path,
+                    'levels_executed': [lvl.level for lvl in decision.levels_executed if lvl.executed],
+                    'total_duration_ms': decision.total_duration_ms,
+                    'warnings': decision.warnings,
+                    'hierarchical': True,  # Flag that hierarchical reasoning was used
+                    'full_decision': decision.to_dict()
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Hierarchical validation error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    def register_agent_for_reasoning(self, agent_name: str, agent_instance: Any) -> None:
+        """Register an agent with the hierarchical reasoner for consultation"""
+        self.hierarchical_reasoner.register_agent(agent_name, agent_instance)
+        logger.info(f"Registered {agent_name} with hierarchical reasoner")
+    
+    def get_hierarchical_statistics(self) -> Dict[str, Any]:
+        """Get hierarchical reasoning performance statistics"""
+        return self.hierarchical_reasoner.get_statistics()
     
     def _assess_rule_violation(self, context: str, rule_text: str, category: str) -> float:
         """Assess potential rule violation severity (0.0 = no violation, 1.0 = severe violation)"""
