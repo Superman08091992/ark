@@ -4,7 +4,10 @@ services:
   ark:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.arch
+      args:
+        PYTHON_VERSION: "3.12"
+        REDIS_VERSION: "7"
     container_name: ark-production
     hostname: ark-prod
     restart: unless-stopped
