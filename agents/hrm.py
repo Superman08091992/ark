@@ -10,6 +10,16 @@ from typing import Dict, Any, List, Tuple
 from agents.base_agent import BaseAgent
 import logging
 
+# Import Graveyard - Immutable Ethics Core
+from graveyard.ethics import (
+    validate_against_graveyard,
+    get_rules,
+    get_categories,
+    get_rule,
+    IMMUTABLE_RULES,
+    ETHICAL_CATEGORIES
+)
+
 logger = logging.getLogger(__name__)
 
 class HRMAgent(BaseAgent):
@@ -28,14 +38,21 @@ class HRMAgent(BaseAgent):
             memory = {
                 'rules_enforced': 0,
                 'violations_prevented': 0,
-                'ethical_categories': ['trading', 'privacy', 'autonomy', 'safety'],
+                'graveyard_validations': 0,  # NEW: Track Graveyard validations
                 'logic_validations': 0,
                 'consistency_checks': 0,
                 'conflict_resolutions': 0,
                 'strict_mode': True,
-                'validation_threshold': 0.95
+                'validation_threshold': 0.95,
+                'graveyard_integrated': True  # NEW: Flag that Graveyard is active
             }
             self.save_memory(memory)
+        
+        # Load immutable rules from Graveyard at initialization
+        self.immutable_rules = get_rules()  # Read-only copy
+        self.ethical_categories = get_categories()  # Read-only copy
+        
+        logger.info(f"HRM initialized with {len(self.immutable_rules)} Graveyard rules")
     
     async def process_message(self, message: str) -> Dict[str, Any]:
         """Process user message with HRM's logical and ethical perspective"""
@@ -237,20 +254,21 @@ I serve not as master, but as guardian. What requires validation or enforcement?
         }
     
     def _get_core_rules_summary(self) -> str:
-        """Get summary of core ethical rules"""
+        """Get summary of core ethical rules from Graveyard"""
         try:
-            conn = self.get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('SELECT rule_text FROM ethical_rules WHERE immutable = 1 LIMIT 4')
-            rules = cursor.fetchall()
-            conn.close()
-            
-            if rules:
-                return "\n".join([f"• {rule[0][:50]}..." for rule in rules])
-            else:
-                return "• Core ethical framework loading..."
-        except:
-            return "• Ethical constraints active and enforced"
+            # Get key immutable rules from Graveyard
+            key_rules = [
+                f"• No insider trading: {get_rule('no_insider_trading')}",
+                f"• Max position size: {get_rule('max_position_size') * 100:.0f}%",
+                f"• Max daily loss: {get_rule('max_daily_loss') * 100:.0f}%",
+                f"• Require stop-loss: {get_rule('require_stop_loss')}",
+                f"• Max leverage: {get_rule('max_leverage')}x",
+                f"• HRM approval required: {get_rule('require_hrm_approval')}"
+            ]
+            return "\n".join(key_rules[:4])  # Show first 4
+        except Exception as e:
+            logger.error(f"Error getting Graveyard summary: {e}")
+            return f"• {len(self.immutable_rules)} immutable rules from Graveyard active"
     
     async def tool_validate_logic(self, statement: str) -> Dict[str, Any]:
         """Validate logical reasoning in a statement"""
@@ -420,71 +438,57 @@ I serve not as master, but as guardian. What requires validation or enforcement?
         return {'valid': validity, 'confidence': confidence}
     
     async def tool_enforce_ethics(self, context: str) -> Dict[str, Any]:
-        """Enforce ethical constraints and rules"""
+        """Enforce ethical constraints and rules using Graveyard"""
         try:
-            # Get all ethical rules from database
-            conn = self.get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('SELECT id, rule_text, category FROM ethical_rules')
-            rules = cursor.fetchall()
-            conn.close()
+            # Convert context string to action structure for Graveyard
+            action = self._parse_context_to_action(context)
             
-            violations = []
-            rules_checked = []
-            compliance_scores = []
+            # Validate against immutable Graveyard rules
+            graveyard_result = validate_against_graveyard(action, agent_name=self.name)
             
-            context_lower = context.lower()
+            # Extract validation results
+            violations = graveyard_result['violations']
+            rules_checked = graveyard_result['rules_checked']
+            compliance_score = graveyard_result['compliance_score']
+            approved = graveyard_result['approved']
             
-            for rule_id, rule_text, category in rules:
-                rules_checked.append({
-                    'id': rule_id,
-                    'text': rule_text,
-                    'category': category
-                })
-                
-                # Check for potential violations based on keywords
-                violation_score = self._assess_rule_violation(context_lower, rule_text, category)
-                compliance_scores.append(1.0 - violation_score)
-                
-                if violation_score > 0.3:  # Violation threshold
-                    severity = 'high' if violation_score > 0.7 else 'medium' if violation_score > 0.5 else 'low'
-                    violations.append({
-                        'rule': rule_text,
-                        'category': category,
-                        'severity': severity,
-                        'violation_score': violation_score
-                    })
-            
-            # Calculate overall compliance
-            overall_compliance = sum(compliance_scores) / len(compliance_scores) if compliance_scores else 1.0
-            
-            # Determine status
+            # Determine status based on violations
             if not violations:
                 status = 'compliant'
-            elif any(v['severity'] == 'high' for v in violations):
+            elif any(v['severity'] == 'CRITICAL' for v in violations):
+                status = 'violation_critical'
+            elif any(v['severity'] == 'HIGH' for v in violations):
                 status = 'violation_high_risk'
-            elif any(v['severity'] == 'medium' for v in violations):
+            elif any(v['severity'] == 'MEDIUM' for v in violations):
                 status = 'violation_medium_risk'
             else:
                 status = 'violation_low_risk'
             
             ethics_data = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': graveyard_result['timestamp'],
                 'context': context,
                 'status': status,
-                'compliance_score': overall_compliance,
+                'approved': approved,
+                'compliance_score': compliance_score,
                 'rules_checked': rules_checked,
                 'violations': violations,
-                'total_rules': len(rules),
-                'enforcement_level': 'strict' if self.get_memory().get('strict_mode', True) else 'permissive'
+                'warnings': graveyard_result.get('warnings', []),
+                'total_rules': len(rules_checked),
+                'enforcement_level': 'immutable',  # Graveyard rules are always immutable
+                'graveyard_validation': True,  # Flag that this used Graveyard
+                'action_type': action.get('action_type', 'unknown'),
+                'agent': graveyard_result['agent']
             }
             
             # Update memory
             memory = self.get_memory()
             memory['rules_enforced'] = memory.get('rules_enforced', 0) + len(rules_checked)
+            memory['graveyard_validations'] = memory.get('graveyard_validations', 0) + 1
             if violations:
                 memory['violations_prevented'] = memory.get('violations_prevented', 0) + len(violations)
             self.save_memory(memory)
+            
+            logger.info(f"HRM Graveyard validation: approved={approved}, compliance={compliance_score:.2f}, violations={len(violations)}")
             
             return {'success': True, 'data': ethics_data}
             
@@ -492,8 +496,81 @@ I serve not as master, but as guardian. What requires validation or enforcement?
             logger.error(f"Ethics enforcement error: {str(e)}")
             return {'success': False, 'error': str(e)}
     
+    def _parse_context_to_action(self, context: str) -> Dict[str, Any]:
+        """Parse context string into action structure for Graveyard validation"""
+        context_lower = context.lower()
+        
+        # Determine action type from context
+        action_type = 'general'
+        if any(word in context_lower for word in ['trade', 'buy', 'sell', 'order']):
+            action_type = 'trade'
+        elif any(word in context_lower for word in ['data', 'share', 'collect', 'store']):
+            action_type = 'data_handling'
+        elif any(word in context_lower for word in ['delete', 'remove', 'destroy']):
+            action_type = 'file_operation'
+        elif any(word in context_lower for word in ['execute', 'run', 'command']):
+            action_type = 'code_execution'
+        
+        # Extract parameters from context (simple keyword extraction)
+        parameters = {
+            'description': context,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Trading-specific parameters
+        if action_type == 'trade':
+            # Look for risk indicators
+            if 'leverage' in context_lower:
+                parameters['leverage'] = 3.0 if 'high' in context_lower else 1.5
+            if any(word in context_lower for word in ['manipulate', 'pump', 'dump']):
+                parameters['manipulative_intent'] = True
+            if 'position' in context_lower:
+                # Try to extract position size (default to safe value)
+                parameters['position_size_pct'] = 0.05
+            if 'stop' in context_lower and 'loss' in context_lower:
+                parameters['stop_loss'] = True
+            else:
+                parameters['stop_loss'] = None  # Missing stop-loss
+        
+        # Data handling parameters
+        elif action_type == 'data_handling':
+            if any(word in context_lower for word in ['personal', 'private', 'sensitive']):
+                parameters['data_sensitivity'] = 'high'
+            if 'consent' not in context_lower:
+                parameters['user_consent'] = False
+        
+        return {
+            'action_type': action_type,
+            'parameters': parameters,
+            'agent': 'HRM',
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    async def validate_action(self, action: Dict[str, Any], agent_name: str = "Unknown") -> Dict[str, Any]:
+        """Validate an action against Graveyard rules (public API for other agents)"""
+        try:
+            # Direct Graveyard validation
+            result = validate_against_graveyard(action, agent_name)
+            
+            # Update statistics
+            memory = self.get_memory()
+            memory['graveyard_validations'] = memory.get('graveyard_validations', 0) + 1
+            if not result['approved']:
+                memory['violations_prevented'] = memory.get('violations_prevented', 0) + len(result['violations'])
+            self.save_memory(memory)
+            
+            logger.info(f"HRM validated action from {agent_name}: approved={result['approved']}")
+            
+            return {'success': True, 'data': result}
+            
+        except Exception as e:
+            logger.error(f"Action validation error: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
     def _assess_rule_violation(self, context: str, rule_text: str, category: str) -> float:
         """Assess potential rule violation severity (0.0 = no violation, 1.0 = severe violation)"""
+        # NOTE: This method is deprecated in favor of Graveyard validation
+        # Keeping for backward compatibility
         
         violation_keywords = {
             'autonomy': ['force', 'compel', 'mandatory', 'required', 'must'],
