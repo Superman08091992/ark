@@ -8,6 +8,8 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Tuple
 from agents.base_agent import BaseAgent
+from reasoning.joey_reasoner import JoeyReasoner
+from reasoning.intra_agent_reasoner import ReasoningDepth
 import logging
 
 # Mock sklearn for pattern analysis (in production, use real scikit-learn)
@@ -43,6 +45,14 @@ class JoeyAgent(BaseAgent):
             'statistical_analysis', 'correlation_analysis', 'trend_analysis'
         ]
         
+        # Initialize Joey-specific hierarchical reasoner
+        # With no speed constraints, we use DEEP reasoning by default
+        self.intra_reasoner = JoeyReasoner(
+            default_depth=ReasoningDepth.DEEP,
+            enable_tree_of_selfs=True,
+            max_branches_per_level=5
+        )
+        
         # Initialize Joey's analytical memory
         memory = self.get_memory()
         if not memory:
@@ -53,7 +63,8 @@ class JoeyAgent(BaseAgent):
                 'accuracy_threshold': 0.75,
                 'features_tracked': ['volume', 'price_action', 'sentiment', 'momentum'],
                 'statistical_methods': ['correlation', 'regression', 'clustering', 'time_series'],
-                'last_analysis': None
+                'last_analysis': None,
+                'reasoning_mode': 'DEEP'  # Can be SHALLOW, MODERATE, DEEP, EXHAUSTIVE
             }
             self.save_memory(memory)
     
@@ -740,3 +751,108 @@ What patterns shall we decode together? Show me your data, and I will reveal its
     async def autonomous_task(self) -> None:
         """Joey's autonomous background task"""
         await self.autonomous_analysis()
+    
+    def get_reasoning_statistics(self) -> Dict[str, Any]:
+        """Get Joey's hierarchical reasoning statistics"""
+        return {
+            'agent': 'Joey',
+            'total_decisions': self.intra_reasoner.total_decisions,
+            'total_reasoning_time_ms': self.intra_reasoner.total_reasoning_time,
+            'avg_reasoning_time_ms': (
+                self.intra_reasoner.total_reasoning_time / self.intra_reasoner.total_decisions
+                if self.intra_reasoner.total_decisions > 0 else 0
+            ),
+            'history_size': len(self.intra_reasoner.reasoning_history),
+            'default_depth': self.intra_reasoner.default_depth.name,
+            'tree_of_selfs_enabled': self.intra_reasoner.enable_tree_of_selfs
+        }
+    
+    async def set_reasoning_mode(self, mode: str) -> Dict[str, Any]:
+        """Set Joey's reasoning depth mode"""
+        valid_modes = ['SHALLOW', 'MODERATE', 'DEEP', 'EXHAUSTIVE']
+        if mode.upper() not in valid_modes:
+            return {
+                'success': False,
+                'error': f'Invalid mode. Must be one of: {", ".join(valid_modes)}'
+            }
+        
+        memory = self.get_memory()
+        memory['reasoning_mode'] = mode.upper()
+        self.save_memory(memory)
+        
+        return {
+            'success': True,
+            'message': f'Joey reasoning mode set to {mode.upper()}',
+            'current_mode': mode.upper()
+        }
+    
+    async def analyze_with_reasoning(self, data: Dict[str, Any], analysis_type: str = 'general') -> Dict[str, Any]:
+        """Analyze data using hierarchical reasoning"""
+        try:
+            memory = self.get_memory()
+            reasoning_mode = memory.get('reasoning_mode', 'DEEP')
+            
+            # Determine reasoning depth
+            depth_map = {
+                'SHALLOW': ReasoningDepth.SHALLOW,
+                'MODERATE': ReasoningDepth.MODERATE,
+                'DEEP': ReasoningDepth.DEEP,
+                'EXHAUSTIVE': ReasoningDepth.EXHAUSTIVE
+            }
+            reasoning_depth = depth_map.get(reasoning_mode, ReasoningDepth.DEEP)
+            
+            # Prepare context
+            context = {
+                'analysis_type': analysis_type,
+                'accuracy_threshold': memory.get('accuracy_threshold', 0.75),
+                'analysis_history': memory.get('analysis_history', [])[-10:],
+                'features_tracked': memory.get('features_tracked', [])
+            }
+            
+            # Execute hierarchical reasoning
+            decision = await self.intra_reasoner.reason(
+                input_data=data,
+                depth=reasoning_depth,
+                context=context
+            )
+            
+            # Extract reasoning results
+            analytical_result = decision.final_decision
+            if isinstance(analytical_result, dict):
+                selected_option = analytical_result.get('selected_option', {})
+                confidence = selected_option.get('confidence', decision.confidence)
+                action = selected_option.get('action', 'inconclusive')
+                recommendations = selected_option.get('recommendations', [])
+            else:
+                confidence = decision.confidence
+                action = 'analysis_complete'
+                recommendations = []
+            
+            # Build result
+            result = {
+                'success': True,
+                'action': action,
+                'confidence': confidence,
+                'recommendations': recommendations,
+                'reasoning': {
+                    'depth': reasoning_depth.name,
+                    'overall_confidence': decision.confidence,
+                    'alternatives_considered': decision.alternatives_considered,
+                    'duration_ms': decision.total_duration_ms,
+                    'cognitive_path': [
+                        {
+                            'level': cl.level,
+                            'name': cl.name,
+                            'confidence': cl.confidence,
+                            'branches': cl.branches_explored
+                        }
+                        for cl in decision.cognitive_levels
+                    ]
+                }
+            }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Joey reasoning analysis error: {str(e)}")
+            return {'success': False, 'error': str(e)}

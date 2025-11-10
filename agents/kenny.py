@@ -10,6 +10,8 @@ import subprocess
 from datetime import datetime
 from typing import Dict, Any, List
 from agents.base_agent import BaseAgent
+from reasoning.kenny_reasoner import KennyReasoner
+from reasoning.intra_agent_reasoner import ReasoningDepth
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,13 @@ class KennyAgent(BaseAgent):
             'create_report', 'build_tool', 'file_manager', 'backup_system'
         ]
         
+        # Initialize Kenny-specific hierarchical reasoner
+        self.intra_reasoner = KennyReasoner(
+            default_depth=ReasoningDepth.DEEP,
+            enable_tree_of_selfs=True,
+            max_branches_per_level=5
+        )
+        
         # Initialize Kenny's memory with build preferences
         memory = self.get_memory()
         if not memory:
@@ -37,7 +46,8 @@ class KennyAgent(BaseAgent):
                     'data': ['json', 'csv', 'xlsx', 'db'],
                     'code': ['py', 'js', 'html', 'css'],
                     'media': ['jpg', 'png', 'mp4', 'mp3']
-                }
+                },
+                'reasoning_mode': 'DEEP'
             }
             self.save_memory(memory)
     
