@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    system: 'ark'
+    cluster: 'main'
+
+# Load rules
+rule_files:
+  - '/etc/prometheus/rules/ark_rules.yml'
+  - '/etc/prometheus/rules/ark_alerts.yml'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            # - 'alertmanager:9093'  # Uncomment when Alertmanager deployed
+
+# Scrape configurations
+scrape_configs:
+  # ARK metrics
+  - job_name: 'ark-metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['ark:9090']
+        labels:
+          service: 'ark-multi-agent'
+          component: 'core'
+    
+    # Relabel for better organization
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ark-production'
+  
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

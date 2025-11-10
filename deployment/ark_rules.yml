@@ -1,0 +1,87 @@
+groups:
+  - name: ark_slo_rules
+    interval: 30s
+    rules:
+      # Availability calculation
+      - record: ark:availability:5m
+        expr: |
+          (1 - (rate(watchdog_quarantines_total[5m]) * 5 / 300))
+      
+      - record: ark:availability:1h
+        expr: |
+          (1 - (rate(watchdog_quarantines_total[1h]) * 5 / 3600))
+      
+      # P95 latency
+      - record: ark:latency:p95:5m
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ark_pass_latency_ms_bucket[5m]))
+      
+      - record: ark:latency:p99:5m
+        expr: |
+          histogram_quantile(0.99, 
+            rate(ark_pass_latency_ms_bucket[5m]))
+      
+      # HRM evaluation latency
+      - record: ark:hrm_eval:p95:5m
+        expr: |
+          histogram_quantile(0.95, 
+            rate(hrm_eval_latency_ms_bucket[5m]))
+      
+      # Throughput
+      - record: ark:throughput:5m
+        expr: |
+          rate(kyle_operations_total[5m])
+      
+      - record: ark:throughput:1h
+        expr: |
+          rate(kyle_operations_total[1h])
+      
+      # Success rate
+      - record: ark:success_rate:5m
+        expr: |
+          (
+            rate(kenny_operations_total{status="success"}[5m]) /
+            rate(kenny_operations_total[5m])
+          )
+      
+      # Ethics denials rate
+      - record: ark:denials_rate:5m
+        expr: |
+          rate(hrm_denials_total[5m])
+      
+      # SLO compliance
+      - record: ark:slo:availability:met
+        expr: |
+          ark:availability:5m >= 0.995
+      
+      - record: ark:slo:latency:met
+        expr: |
+          ark:latency:p95:5m <= 400
+      
+      - record: ark:slo:hrm_eval:met
+        expr: |
+          ark:hrm_eval:p95:5m <= 120
+
+  - name: ark_aggregations
+    interval: 1m
+    rules:
+      # Agent-specific metrics
+      - record: ark:agent:operations:rate
+        expr: |
+          sum by (agent) (rate(agent_method_errors_total[5m]))
+      
+      - record: ark:agent:error_rate
+        expr: |
+          sum by (agent) (rate(agent_method_errors_total[5m]))
+      
+      # Redis stream depth
+      - record: ark:redis:queue_depth:max
+        expr: |
+          max by (stream) (redis_stream_depth)
+      
+      # State operations
+      - record: ark:state:write_latency:p95
+        expr: |
+          histogram_quantile(0.95,
+            rate(state_write_latency_ms_bucket[5m]))

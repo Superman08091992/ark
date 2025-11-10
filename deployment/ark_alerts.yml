@@ -1,0 +1,195 @@
+groups:
+  - name: ark_slo_alerts
+    rules:
+      # Critical: Availability SLO violation
+      - alert: ARKAvailabilitySLOViolation
+        expr: ark:availability:5m < 0.995
+        for: 3m
+        labels:
+          severity: critical
+          team: platform
+          component: availability
+        annotations:
+          summary: "ARK availability below 99.5% SLO"
+          description: "Current availability: {{ $value | humanizePercentage }} (target: 99.5%)"
+          runbook_url: "https://wiki.ark/runbooks/availability-slo-violation"
+      
+      # Warning: Latency SLO violation
+      - alert: ARKLatencySLOViolation
+        expr: ark:latency:p95:5m > 400
+        for: 3m
+        labels:
+          severity: warning
+          team: platform
+          component: latency
+        annotations:
+          summary: "ARK p95 latency exceeds 400ms SLO"
+          description: "Current p95 latency: {{ $value }}ms (target: ≤400ms)"
+          runbook_url: "https://wiki.ark/runbooks/latency-slo-violation"
+      
+      # Critical: HRM evaluation latency
+      - alert: ARKHRMLatencySLOViolation
+        expr: ark:hrm_eval:p95:5m > 120
+        for: 5m
+        labels:
+          severity: warning
+          team: ethics
+          component: hrm
+        annotations:
+          summary: "HRM evaluation latency exceeds 120ms SLO"
+          description: "Current p95 HRM latency: {{ $value }}ms (target: ≤120ms)"
+          runbook_url: "https://wiki.ark/runbooks/hrm-latency"
+
+  - name: ark_agent_alerts
+    rules:
+      # Critical: Agent quarantined
+      - alert: ARKAgentQuarantined
+        expr: increase(watchdog_quarantines_total[5m]) > 0
+        labels:
+          severity: critical
+          team: platform
+          component: watchdog
+        annotations:
+          summary: "ARK agent quarantined by Watchdog"
+          description: "Agent {{ $labels.agent }} quarantined: {{ $labels.reason }}"
+          runbook_url: "https://wiki.ark/runbooks/agent-quarantine"
+      
+      # Warning: High error rate
+      - alert: ARKAgentHighErrorRate
+        expr: ark:agent:error_rate > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High error rate for agent {{ $labels.agent }}"
+          description: "Error rate: {{ $value }}/sec for {{ $labels.agent }}"
+          runbook_url: "https://wiki.ark/runbooks/agent-errors"
+      
+      # Warning: Agent not responding
+      - alert: ARKAgentHeartbeatMissing
+        expr: increase(agent_heartbeat_failures[5m]) > 3
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Agent {{ $labels.agent }} missing heartbeats"
+          description: "Agent {{ $labels.agent }} has missed {{ $value }} heartbeats in 5 minutes"
+          runbook_url: "https://wiki.ark/runbooks/heartbeat-failure"
+
+  - name: ark_ethics_alerts
+    rules:
+      # Critical: Ethics violation spike
+      - alert: ARKEthicsViolationSpike
+        expr: rate(hrm_denials_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          team: ethics
+          component: graveyard
+        annotations:
+          summary: "High rate of ethics violations detected"
+          description: "Denial rate: {{ $value }}/sec for rule {{ $labels.rule_id }} by {{ $labels.agent }}"
+          runbook_url: "https://wiki.ark/runbooks/ethics-violations"
+      
+      # Warning: Graveyard validation latency
+      - alert: ARKGraveyardSlowValidation
+        expr: histogram_quantile(0.95, rate(hrm_eval_latency_ms_bucket[5m])) > 200
+        for: 5m
+        labels:
+          severity: warning
+          team: ethics
+        annotations:
+          summary: "Graveyard validation latency high"
+          description: "P95 validation latency: {{ $value }}ms"
+          runbook_url: "https://wiki.ark/runbooks/graveyard-performance"
+
+  - name: ark_infrastructure_alerts
+    rules:
+      # Critical: Redis queue depth high
+      - alert: ARKRedisQueueDepthHigh
+        expr: ark:redis:queue_depth:max > 5000
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          component: redis
+        annotations:
+          summary: "Redis stream {{ $labels.stream }} has high queue depth"
+          description: "Queue depth: {{ $value }} messages (threshold: 5000)"
+          runbook_url: "https://wiki.ark/runbooks/redis-backpressure"
+      
+      # Warning: State write latency
+      - alert: ARKStateWriteLatencyHigh
+        expr: ark:state:write_latency:p95 > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          component: mutable_core
+        annotations:
+          summary: "Mutable Core write latency high"
+          description: "P95 write latency: {{ $value }}ms (expected: <50ms)"
+          runbook_url: "https://wiki.ark/runbooks/state-performance"
+      
+      # Critical: Disk space low
+      - alert: ARKDiskSpaceLow
+        expr: node_filesystem_avail_bytes{mountpoint="/var/lib/ark"} / node_filesystem_size_bytes{mountpoint="/var/lib/ark"} < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "ARK state disk space critically low"
+          description: "Available: {{ $value | humanizePercentage }} (threshold: 10%)"
+          runbook_url: "https://wiki.ark/runbooks/disk-space"
+
+  - name: ark_canary_alerts
+    rules:
+      # Canary tripwire: HRM denials spike
+      - alert: ARKCanaryHRMDenialsSpike
+        expr: |
+          (
+            rate(hrm_denials_total{deployment="canary"}[5m]) -
+            rate(hrm_denials_total{deployment="stable"}[5m])
+          ) > 3 * stddev_over_time(rate(hrm_denials_total{deployment="stable"}[5m])[1h:5m])
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+          component: canary
+          action: rollback
+        annotations:
+          summary: "Canary deployment showing ethics denial spike"
+          description: "Canary denials significantly higher than stable (>3σ)"
+          runbook_url: "https://wiki.ark/runbooks/canary-rollback"
+      
+      # Canary tripwire: Quarantine events
+      - alert: ARKCanaryQuarantineDetected
+        expr: increase(watchdog_quarantines_total{deployment="canary"}[10m]) > 0
+        labels:
+          severity: critical
+          team: platform
+          component: canary
+          action: rollback
+        annotations:
+          summary: "Canary deployment triggered agent quarantine"
+          description: "Agent {{ $labels.agent }} quarantined in canary"
+          runbook_url: "https://wiki.ark/runbooks/canary-rollback"
+      
+      # Canary tripwire: Latency breach
+      - alert: ARKCanaryLatencyBreach
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ark_pass_latency_ms_bucket{deployment="canary"}[5m])
+          ) > 400
+        for: 3m
+        labels:
+          severity: critical
+          team: platform
+          component: canary
+          action: rollback
+        annotations:
+          summary: "Canary deployment exceeding latency SLO"
+          description: "Canary p95 latency: {{ $value }}ms (threshold: 400ms for 3min)"
+          runbook_url: "https://wiki.ark/runbooks/canary-rollback"
