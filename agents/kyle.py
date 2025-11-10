@@ -9,6 +9,8 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from agents.base_agent import BaseAgent
+from reasoning.kyle_reasoner import KyleReasoner
+from reasoning.intra_agent_reasoner import ReasoningDepth
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,14 @@ class KyleAgent(BaseAgent):
         super().__init__("Kyle", "The Seer")
         self._agent_tools = ['scan_markets', 'fetch_news', 'analyze_sentiment', 'detect_signals']
         
+        # Initialize Kyle-specific hierarchical reasoner
+        # With no speed constraints, we use DEEP reasoning by default
+        self.intra_reasoner = KyleReasoner(
+            default_depth=ReasoningDepth.DEEP,
+            enable_tree_of_selfs=True,
+            max_branches_per_level=5
+        )
+        
         # Initialize Kyle's personality and default memory
         memory = self.get_memory()
         if not memory:
@@ -29,7 +39,8 @@ class KyleAgent(BaseAgent):
                 'signal_threshold': 0.7,
                 'last_scan': None,
                 'detected_signals': [],
-                'market_sentiment': 'neutral'
+                'market_sentiment': 'neutral',
+                'reasoning_mode': 'DEEP'  # Can be SHALLOW, MODERATE, DEEP, EXHAUSTIVE
             }
             self.save_memory(memory)
     
@@ -128,15 +139,25 @@ What patterns shall we seek together?"""
         }
     
     async def tool_scan_markets(self) -> Dict[str, Any]:
-        """Scan watched symbols for signals"""
+        """Scan watched symbols for signals using hierarchical reasoning"""
         try:
             memory = self.get_memory()
             symbols = memory.get('watched_symbols', [])
+            reasoning_mode = memory.get('reasoning_mode', 'DEEP')
+            
+            # Determine reasoning depth
+            depth_map = {
+                'SHALLOW': ReasoningDepth.SHALLOW,
+                'MODERATE': ReasoningDepth.MODERATE,
+                'DEEP': ReasoningDepth.DEEP,
+                'EXHAUSTIVE': ReasoningDepth.EXHAUSTIVE
+            }
+            reasoning_depth = depth_map.get(reasoning_mode, ReasoningDepth.DEEP)
             
             scan_results = []
             
             for symbol in symbols:
-                # Simulate market data analysis
+                # Gather raw market data
                 # In production, this would connect to real market APIs
                 import random
                 
@@ -144,41 +165,72 @@ What patterns shall we seek together?"""
                 volume_surge = random.uniform(0.8, 2.5)     # 80% to 250% normal volume
                 sentiment_score = random.uniform(-1.0, 1.0)  # -1 (bearish) to 1 (bullish)
                 
-                # Calculate signal strength based on multiple factors
-                signal_strength = 0
-                description_parts = []
+                # Prepare raw signal data for hierarchical reasoning
+                raw_signal_data = {
+                    'symbol': symbol,
+                    'price_change': price_change,
+                    'volume_surge': volume_surge,
+                    'sentiment_score': sentiment_score,
+                    'timestamp': datetime.now().isoformat()
+                }
                 
-                if abs(price_change) > 0.03:  # > 3% move
-                    signal_strength += 0.3
-                    direction = "surge" if price_change > 0 else "drop"
-                    description_parts.append(f"Price {direction} {abs(price_change):.1%}")
+                # Use hierarchical reasoning to analyze signal
+                reasoning_context = {
+                    'agent_role': 'market_scanner',
+                    'threshold': memory.get('signal_threshold', 0.7),
+                    'historical_patterns': memory.get('detected_signals', [])[-10:],  # Last 10 signals
+                    'market_sentiment': memory.get('market_sentiment', 'neutral')
+                }
                 
-                if volume_surge > 1.5:  # 50% above normal
-                    signal_strength += 0.3
-                    description_parts.append(f"Volume spike {volume_surge:.1f}x")
+                # Execute hierarchical reasoning
+                decision = await self.intra_reasoner.reason(
+                    input_data=raw_signal_data,
+                    depth=reasoning_depth,
+                    context=reasoning_context
+                )
                 
-                if abs(sentiment_score) > 0.6:  # Strong sentiment
-                    signal_strength += 0.2
-                    mood = "bullish" if sentiment_score > 0 else "bearish"
-                    description_parts.append(f"Sentiment {mood}")
+                # Extract reasoning results from Level 5 decision output
+                signal_analysis = decision.final_decision
+                if isinstance(signal_analysis, dict):
+                    # Kyle reasoner returns decision with 'selected_option'
+                    selected_option = signal_analysis.get('selected_option', {})
+                    signal_strength = selected_option.get('signal_strength', decision.confidence)
+                    description = selected_option.get('description', 'Signal analyzed')
+                    
+                    # Extract patterns from Level 2 analysis
+                    patterns = []
+                    for level in decision.cognitive_levels:
+                        if level.level == 2 and hasattr(level, 'output_data'):
+                            analysis_output = level.output_data
+                            if isinstance(analysis_output, dict):
+                                detected_patterns = analysis_output.get('patterns', [])
+                                patterns.extend([p.get('type', 'unknown') for p in detected_patterns])
+                else:
+                    # Fallback if reasoning returns non-dict
+                    signal_strength = decision.confidence
+                    description = f"Hierarchical analysis (confidence: {decision.confidence:.2f})"
+                    patterns = []
                 
-                # Random pattern detection
-                if random.random() > 0.7:  # 30% chance of pattern
-                    patterns = ["breakout", "reversal", "consolidation", "momentum"]
-                    pattern = random.choice(patterns)
-                    signal_strength += 0.2
-                    description_parts.append(f"{pattern.title()} pattern")
-                
-                description = " | ".join(description_parts) if description_parts else "Normal market behavior"
-                
+                # Build comprehensive result with reasoning chain
                 scan_results.append({
                     'symbol': symbol,
                     'price_change': price_change,
                     'volume_surge': volume_surge,
                     'sentiment_score': sentiment_score,
-                    'signal_strength': min(signal_strength, 1.0),  # Cap at 100%
+                    'signal_strength': signal_strength,
                     'description': description,
-                    'timestamp': datetime.now().isoformat()
+                    'patterns': patterns,
+                    'timestamp': datetime.now().isoformat(),
+                    'reasoning': {
+                        'depth': reasoning_depth.name,
+                        'confidence': decision.confidence,
+                        'alternatives_considered': decision.alternatives_considered,
+                        'duration_ms': decision.total_duration_ms,
+                        'cognitive_path': [
+                            {'level': cl.level, 'name': cl.name, 'confidence': cl.confidence}
+                            for cl in decision.cognitive_levels
+                        ]
+                    }
                 })
             
             # Update memory with scan results
@@ -282,3 +334,37 @@ What patterns shall we seek together?"""
     async def autonomous_task(self) -> None:
         """Kyle's autonomous background task"""
         await self.autonomous_scan()
+    
+    def get_reasoning_statistics(self) -> Dict[str, Any]:
+        """Get Kyle's hierarchical reasoning statistics"""
+        return {
+            'agent': 'Kyle',
+            'total_decisions': self.intra_reasoner.total_decisions,
+            'total_reasoning_time_ms': self.intra_reasoner.total_reasoning_time,
+            'avg_reasoning_time_ms': (
+                self.intra_reasoner.total_reasoning_time / self.intra_reasoner.total_decisions
+                if self.intra_reasoner.total_decisions > 0 else 0
+            ),
+            'history_size': len(self.intra_reasoner.reasoning_history),
+            'default_depth': self.intra_reasoner.default_depth.name,
+            'tree_of_selfs_enabled': self.intra_reasoner.enable_tree_of_selfs
+        }
+    
+    async def set_reasoning_mode(self, mode: str) -> Dict[str, Any]:
+        """Set Kyle's reasoning depth mode"""
+        valid_modes = ['SHALLOW', 'MODERATE', 'DEEP', 'EXHAUSTIVE']
+        if mode.upper() not in valid_modes:
+            return {
+                'success': False,
+                'error': f'Invalid mode. Must be one of: {", ".join(valid_modes)}'
+            }
+        
+        memory = self.get_memory()
+        memory['reasoning_mode'] = mode.upper()
+        self.save_memory(memory)
+        
+        return {
+            'success': True,
+            'message': f'Kyle reasoning mode set to {mode.upper()}',
+            'current_mode': mode.upper()
+        }
