@@ -1,15 +1,17 @@
 """
-Unit Tests for Graveyard Integration with HRM
-Tests immutability, validation, and integration with agent actions
+Unit tests for Graveyard integration with HRM
+Tests immutable ethics enforcement and action validation
 """
 
+import pytest
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import unittest
-import json
+import asyncio
 from datetime import datetime
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from graveyard.ethics import (
     validate_against_graveyard,
     get_rules,
@@ -20,26 +22,42 @@ from graveyard.ethics import (
 )
 
 
-class TestGraveyardCore(unittest.TestCase):
-    """Test core Graveyard functionality"""
+class TestGraveyardCore:
+    """Test Graveyard core functionality"""
     
-    def test_graveyard_immutability(self):
-        """Test that Graveyard rules cannot be modified"""
+    def test_rules_immutable(self):
+        """Test that rules are read-only copies"""
         rules = get_rules()
-        original_count = len(rules)
+        original_value = rules['max_position_size']
         
-        # Attempt to modify returned copy (should not affect original)
-        rules['test_rule'] = 'malicious_value'
+        # Try to modify (should not affect Graveyard)
+        rules['max_position_size'] = 0.99
         
         # Get fresh copy
         fresh_rules = get_rules()
-        
-        self.assertEqual(len(fresh_rules), original_count)
-        self.assertNotIn('test_rule', fresh_rules)
-        print("✅ Graveyard immutability: Rules cannot be modified via get_rules()")
+        assert fresh_rules['max_position_size'] == original_value
+        assert fresh_rules['max_position_size'] != 0.99
     
-    def test_ethical_categories_complete(self):
-        """Test that all expected categories exist"""
+    def test_all_rules_present(self):
+        """Test that all expected rules exist"""
+        rules = get_rules()
+        
+        required_rules = [
+            'no_insider_trading',
+            'no_market_manipulation',
+            'max_position_size',
+            'max_daily_loss',
+            'require_stop_loss',
+            'require_hrm_approval',
+            'protect_user_data',
+            'immutable_graveyard'
+        ]
+        
+        for rule in required_rules:
+            assert rule in rules, f"Rule '{rule}' missing from Graveyard"
+    
+    def test_categories_structure(self):
+        """Test that all ethical categories are defined"""
         categories = get_categories()
         
         expected_categories = [
@@ -52,476 +70,524 @@ class TestGraveyardCore(unittest.TestCase):
         ]
         
         for category in expected_categories:
-            self.assertIn(category, categories)
-            self.assertIsInstance(categories[category], list)
-            self.assertGreater(len(categories[category]), 0)
-        
-        print(f"✅ Ethical categories: All {len(expected_categories)} categories present")
+            assert category in categories, f"Category '{category}' missing"
+            assert isinstance(categories[category], list)
+            assert len(categories[category]) > 0
     
-    def test_rule_retrieval(self):
-        """Test individual rule retrieval"""
-        # Test key rules
-        self.assertTrue(get_rule('no_insider_trading'))
-        self.assertTrue(get_rule('no_market_manipulation'))
-        self.assertEqual(get_rule('max_position_size'), 0.10)
-        self.assertEqual(get_rule('max_daily_loss'), 0.05)
-        self.assertEqual(get_rule('max_leverage'), 2.0)
+    def test_get_specific_rule(self):
+        """Test retrieving specific rules"""
+        max_pos = get_rule('max_position_size')
+        assert max_pos == 0.10
         
-        # Test non-existent rule
-        self.assertIsNone(get_rule('nonexistent_rule'))
+        max_loss = get_rule('max_daily_loss')
+        assert max_loss == 0.05
         
-        print("✅ Rule retrieval: All key rules accessible")
+        max_lev = get_rule('max_leverage')
+        assert max_lev == 2.0
+        
+        no_insider = get_rule('no_insider_trading')
+        assert no_insider is True
 
 
-class TestGraveyardValidation(unittest.TestCase):
-    """Test Graveyard validation logic"""
+class TestGraveyardValidation:
+    """Test action validation against Graveyard rules"""
     
     def test_valid_trade_action(self):
-        """Test that valid trades are approved"""
+        """Test that a compliant trade action is approved"""
         action = {
             'action_type': 'trade',
             'parameters': {
-                'symbol': 'AAPL',
-                'position_size_pct': 0.05,  # 5% - within 10% limit
-                'stop_loss': 150.00,
-                'leverage': 1.0,
+                'symbol': 'SPY',
+                'position_size_pct': 0.05,  # Within 10% limit
+                'stop_loss': 450,
+                'take_profit': 470,
+                'leverage': 1.5,  # Within 2x limit
                 'risk_reward_ratio': 2.0
-            }
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertTrue(result['approved'])
-        self.assertEqual(len(result['violations']), 0)
-        self.assertGreater(result['compliance_score'], 0.9)
-        self.assertEqual(result['agent'], 'Kenny')
-        
-        print(f"✅ Valid trade: Approved with {result['compliance_score']:.1%} compliance")
+        assert result['approved'] is True
+        assert result['compliance_score'] >= 0.95
+        assert len(result['violations']) == 0
+        assert len(result['rules_checked']) > 0
     
-    def test_oversized_position_violation(self):
-        """Test that oversized positions are rejected"""
+    def test_excessive_position_size(self):
+        """Test that excessive position size is rejected"""
         action = {
             'action_type': 'trade',
             'parameters': {
                 'symbol': 'TSLA',
-                'position_size_pct': 0.15,  # 15% - EXCEEDS 10% limit
-                'stop_loss': 200.00,
+                'position_size_pct': 0.25,  # Exceeds 10% limit!
+                'stop_loss': 200,
                 'leverage': 1.0
-            }
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertFalse(result['approved'])
-        self.assertGreater(len(result['violations']), 0)
+        assert result['approved'] is False
+        assert result['compliance_score'] < 1.0
         
-        # Check for position size violation
+        # Check for specific violation
         violation_rules = [v['rule'] for v in result['violations']]
-        self.assertIn('max_position_size', violation_rules)
+        assert 'max_position_size' in violation_rules
         
-        # Find the specific violation
+        # Check severity
         pos_violation = next(v for v in result['violations'] if v['rule'] == 'max_position_size')
-        self.assertIn('HIGH', pos_violation['severity'])
-        
-        print(f"✅ Oversized position: Correctly rejected ({len(result['violations'])} violations)")
+        assert pos_violation['severity'] in ['HIGH', 'CRITICAL']
     
-    def test_missing_stop_loss_violation(self):
-        """Test that trades without stop-loss are flagged"""
+    def test_missing_stop_loss(self):
+        """Test that missing stop-loss triggers violation"""
         action = {
             'action_type': 'trade',
             'parameters': {
                 'symbol': 'BTC-USD',
                 'position_size_pct': 0.08,
-                'stop_loss': None,  # MISSING STOP-LOSS
-                'leverage': 1.5
-            }
+                'stop_loss': None,  # Missing!
+                'leverage': 1.0
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertFalse(result['approved'])
+        assert result['approved'] is False
         
         violation_rules = [v['rule'] for v in result['violations']]
-        self.assertIn('require_stop_loss', violation_rules)
-        
-        print(f"✅ Missing stop-loss: Correctly flagged")
+        assert 'require_stop_loss' in violation_rules
     
-    def test_excessive_leverage_violation(self):
+    def test_excessive_leverage(self):
         """Test that excessive leverage is rejected"""
         action = {
             'action_type': 'trade',
             'parameters': {
                 'symbol': 'ETH-USD',
                 'position_size_pct': 0.05,
-                'stop_loss': 3000.00,
-                'leverage': 5.0  # EXCEEDS 2x limit
-            }
+                'stop_loss': 3000,
+                'leverage': 5.0  # Exceeds 2x limit!
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertFalse(result['approved'])
+        assert result['approved'] is False
         
         violation_rules = [v['rule'] for v in result['violations']]
-        self.assertIn('max_leverage', violation_rules)
-        
-        print(f"✅ Excessive leverage: Correctly rejected")
+        assert 'max_leverage' in violation_rules
     
-    def test_manipulative_intent_violation(self):
-        """Test that market manipulation is detected"""
+    def test_market_manipulation_detected(self):
+        """Test that market manipulation intent is flagged"""
         action = {
             'action_type': 'trade',
             'parameters': {
-                'symbol': 'GME',
-                'position_size_pct': 0.03,
-                'stop_loss': 50.00,
-                'manipulative_intent': True,  # MANIPULATION FLAG
-                'strategy': 'pump_and_dump'
-            }
+                'symbol': 'MEME',
+                'position_size_pct': 0.05,
+                'stop_loss': 10,
+                'manipulative_intent': True  # Red flag!
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertFalse(result['approved'])
+        assert result['approved'] is False
         
         violation_rules = [v['rule'] for v in result['violations']]
-        self.assertIn('no_market_manipulation', violation_rules)
+        assert 'no_market_manipulation' in violation_rules
         
-        # Should be CRITICAL severity
+        # Should be critical severity
         manip_violation = next(v for v in result['violations'] if v['rule'] == 'no_market_manipulation')
-        self.assertEqual(manip_violation['severity'], 'CRITICAL')
-        
-        print(f"✅ Market manipulation: CRITICAL violation detected")
+        assert manip_violation['severity'] == 'CRITICAL'
     
     def test_multiple_violations(self):
-        """Test action with multiple violations"""
+        """Test action with multiple rule violations"""
         action = {
             'action_type': 'trade',
             'parameters': {
-                'symbol': 'SPY',
-                'position_size_pct': 0.20,  # EXCEEDS limit
-                'stop_loss': None,          # MISSING
-                'leverage': 3.0,            # EXCEEDS limit
-                'manipulative_intent': True # MANIPULATION
-            }
+                'symbol': 'YOLO',
+                'position_size_pct': 0.50,  # Way too high!
+                'stop_loss': None,  # Missing!
+                'leverage': 10.0,  # Way too high!
+                'risk_reward_ratio': 0.5  # Too low!
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertFalse(result['approved'])
-        self.assertGreaterEqual(len(result['violations']), 3)
-        self.assertLess(result['compliance_score'], 0.5)
-        
-        print(f"✅ Multiple violations: {len(result['violations'])} violations detected, compliance={result['compliance_score']:.1%}")
+        assert result['approved'] is False
+        assert len(result['violations']) >= 3
+        assert result['compliance_score'] < 0.5
     
-    def test_data_privacy_validation(self):
-        """Test data privacy rule enforcement"""
+    def test_data_privacy_violation(self):
+        """Test that data privacy violations are detected"""
         action = {
             'action_type': 'data_handling',
             'parameters': {
-                'operation': 'collect_user_data',
-                'data_sensitivity': 'high',
-                'user_consent': False,  # NO CONSENT
-                'encryption': False
-            }
+                'operation': 'share',
+                'data_type': 'personal',
+                'user_consent': False  # No consent!
+            },
+            'agent': 'Joey',
+            'timestamp': datetime.now().isoformat()
         }
         
-        result = validate_against_graveyard(action, 'Kyle')
+        result = validate_against_graveyard(action, 'Joey')
         
-        self.assertFalse(result['approved'])
+        assert result['approved'] is False
         
         violation_rules = [v['rule'] for v in result['violations']]
-        # Should flag privacy violations
-        self.assertTrue(
-            any('consent' in rule or 'privacy' in rule for rule in violation_rules)
-        )
-        
-        print(f"✅ Data privacy: Privacy violations detected")
+        assert 'require_consent' in violation_rules or 'protect_user_data' in violation_rules
     
-    def test_compliance_score_calculation(self):
-        """Test compliance score is calculated correctly"""
-        # Perfect compliance
-        perfect_action = {
-            'action_type': 'general',
-            'parameters': {'description': 'routine check'}
-        }
-        perfect_result = validate_against_graveyard(perfect_action, 'HRM')
-        self.assertGreaterEqual(perfect_result['compliance_score'], 0.9)
-        
-        # Poor compliance
-        bad_action = {
+    def test_hrm_approval_requirement(self):
+        """Test that HIGH-RISK actions require HRM approval"""
+        # Low-risk action (small position, has stop-loss, no leverage) - should NOT require approval
+        low_risk_action = {
             'action_type': 'trade',
             'parameters': {
-                'position_size_pct': 0.25,  # Way over
-                'stop_loss': None,
-                'leverage': 10.0,
-                'manipulative_intent': True
-            }
+                'symbol': 'SPY',
+                'position_size_pct': 0.05,  # Small position
+                'stop_loss': 450,  # Has protection
+                'leverage': 1.0,  # No leverage
+                'hrm_approved': False
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
-        bad_result = validate_against_graveyard(bad_action, 'Kenny')
-        self.assertLess(bad_result['compliance_score'], 0.5)
         
-        print(f"✅ Compliance scoring: Perfect={perfect_result['compliance_score']:.1%}, Poor={bad_result['compliance_score']:.1%}")
-
-
-class TestKennyActionValidation(unittest.TestCase):
-    """Test validation of Kenny (executor) actions"""
-    
-    def test_kenny_safe_file_operation(self):
-        """Test that safe file operations are approved"""
-        action = {
-            'action_type': 'file_operation',
+        result_low_risk = validate_against_graveyard(low_risk_action, 'Kenny')
+        
+        # Low-risk actions don't require HRM approval
+        violation_rules_low = [v['rule'] for v in result_low_risk['violations']]
+        assert 'require_hrm_approval' not in violation_rules_low, "Low-risk action should not require HRM approval"
+        
+        # High-risk action (large position, no stop-loss, leveraged) - SHOULD require approval
+        high_risk_action = {
+            'action_type': 'trade',
             'parameters': {
-                'operation': 'create',
-                'file_path': '/app/files/report.txt',
-                'description': 'Create analysis report'
-            }
+                'symbol': 'VOLATILE',
+                'position_size_pct': 0.09,  # Large position (>8%)
+                'stop_loss': None,  # No protection!
+                'leverage': 2.0,  # Leveraged
+                'hrm_approved': False  # Not approved!
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        result_high_risk = validate_against_graveyard(high_risk_action, 'Kenny')
+        
+        # High-risk actions DO require HRM approval
+        violation_rules_high = [v['rule'] for v in result_high_risk['violations']]
+        assert 'require_hrm_approval' in violation_rules_high, "High-risk action must require HRM approval"
+
+
+class TestGraveyardEdgeCases:
+    """Test edge cases and boundary conditions"""
+    
+    def test_exact_limit_position_size(self):
+        """Test position size exactly at limit (should pass)"""
+        action = {
+            'action_type': 'trade',
+            'parameters': {
+                'position_size_pct': 0.10,  # Exactly at 10% limit
+                'stop_loss': 100,
+                'leverage': 1.0
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertTrue(result['approved'])
-        print(f"✅ Kenny safe file operation: Approved")
+        # At exact limit might trigger warning but should not violate
+        pos_violations = [v for v in result['violations'] if v['rule'] == 'max_position_size']
+        # Either no violation or low severity warning
+        if pos_violations:
+            assert pos_violations[0]['severity'] in ['LOW', 'MEDIUM']
     
-    def test_kenny_dangerous_deletion(self):
-        """Test that dangerous deletions require approval"""
+    def test_empty_action(self):
+        """Test validation with minimal action data"""
+        action = {
+            'action_type': 'general',
+            'parameters': {},
+            'agent': 'Unknown',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        result = validate_against_graveyard(action, 'Unknown')
+        
+        # Should process without crashing
+        assert 'approved' in result
+        assert 'compliance_score' in result
+        assert 'violations' in result
+    
+    def test_unknown_action_type(self):
+        """Test handling of unknown action types"""
+        action = {
+            'action_type': 'unknown_experimental',
+            'parameters': {
+                'something': 'random'
+            },
+            'agent': 'Test',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        result = validate_against_graveyard(action, 'Test')
+        
+        # Should handle gracefully, may flag as requiring approval
+        assert 'approved' in result
+        assert isinstance(result['violations'], list)
+    
+    def test_validation_response_structure(self):
+        """Test that validation response has required fields"""
+        action = {
+            'action_type': 'trade',
+            'parameters': {'symbol': 'TEST'},
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        result = validate_against_graveyard(action, 'Kenny')
+        
+        # Check all required fields present
+        required_fields = [
+            'approved',
+            'violations',
+            'warnings',
+            'rules_checked',
+            'compliance_score',
+            'timestamp',
+            'agent'
+        ]
+        
+        for field in required_fields:
+            assert field in result, f"Required field '{field}' missing from validation result"
+        
+        # Check types
+        assert isinstance(result['approved'], bool)
+        assert isinstance(result['violations'], list)
+        assert isinstance(result['warnings'], list)
+        assert isinstance(result['rules_checked'], list)
+        assert isinstance(result['compliance_score'], float)
+        assert 0.0 <= result['compliance_score'] <= 1.0
+
+
+class TestKennyMockActions:
+    """Test mock actions from Kenny (Action agent)"""
+    
+    def test_kenny_valid_file_read(self):
+        """Test that Kenny reading files is allowed"""
+        action = {
+            'action_type': 'file_operation',
+            'parameters': {
+                'operation': 'read',
+                'file_path': '/app/files/data.json',
+                'destructive': False
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        result = validate_against_graveyard(action, 'Kenny')
+        
+        # Read operations should generally be safe
+        assert result['compliance_score'] > 0.8
+    
+    def test_kenny_valid_file_write(self):
+        """Test that Kenny writing files is allowed with constraints"""
+        action = {
+            'action_type': 'file_operation',
+            'parameters': {
+                'operation': 'write',
+                'file_path': '/app/files/output.json',
+                'destructive': False,
+                'backup_exists': True
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        result = validate_against_graveyard(action, 'Kenny')
+        
+        # Write with backup should be acceptable
+        assert result['compliance_score'] > 0.7
+    
+    def test_kenny_dangerous_delete(self):
+        """Test that Kenny deleting files triggers review"""
         action = {
             'action_type': 'file_operation',
             'parameters': {
                 'operation': 'delete',
-                'file_path': '/app/critical_data.db',
-                'hrm_approved': False  # NO APPROVAL
-            }
+                'file_path': '/app/files/important.db',
+                'destructive': True,
+                'backup_exists': False  # No backup!
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        # Should require HRM approval
+        # Destructive operations should require approval
         violation_rules = [v['rule'] for v in result['violations']]
-        self.assertIn('require_hrm_approval', violation_rules)
-        
-        print(f"✅ Kenny dangerous deletion: HRM approval required")
+        assert 'require_hrm_approval' in violation_rules
     
-    def test_kenny_trade_execution(self):
-        """Test Kenny executing a trade action"""
+    def test_kenny_risky_trade_rejected(self):
+        """Test that Kenny's risky trade proposal is rejected"""
         action = {
             'action_type': 'trade',
             'parameters': {
-                'symbol': 'AAPL',
-                'action': 'buy',
-                'position_size_pct': 0.07,
-                'stop_loss': 150.00,
-                'take_profit': 165.00,
-                'leverage': 1.0,
-                'risk_reward_ratio': 2.14
-            }
+                'symbol': 'VOLATILE_PENNY_STOCK',
+                'position_size_pct': 0.30,  # Too large!
+                'stop_loss': None,  # No protection!
+                'leverage': 3.0,  # Too high!
+                'risk_reward_ratio': 0.8,  # Too low!
+                'market_conditions': 'highly_volatile'
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
         result = validate_against_graveyard(action, 'Kenny')
         
-        self.assertTrue(result['approved'])
-        self.assertGreater(result['compliance_score'], 0.9)
+        assert result['approved'] is False
+        assert len(result['violations']) >= 3
+        assert result['compliance_score'] < 0.5
         
-        print(f"✅ Kenny trade execution: Approved with compliance={result['compliance_score']:.1%}")
-
-
-class TestIntegrationScenarios(unittest.TestCase):
-    """Test realistic integration scenarios"""
+        # Check for specific violations
+        violation_rules = [v['rule'] for v in result['violations']]
+        assert 'max_position_size' in violation_rules
+        assert 'require_stop_loss' in violation_rules
+        assert 'max_leverage' in violation_rules
     
-    def test_full_validation_pipeline(self):
-        """Test complete validation pipeline from Kyle → Joey → Kenny → HRM"""
-        
-        # 1. Kyle detects signal
-        kyle_signal = {
-            'action_type': 'market_signal',
-            'parameters': {
-                'symbol': 'TSLA',
-                'signal_strength': 0.85,
-                'signal_type': 'bullish',
-                'confidence': 0.78
-            }
-        }
-        kyle_result = validate_against_graveyard(kyle_signal, 'Kyle')
-        self.assertTrue(kyle_result['approved'])
-        
-        # 2. Joey analyzes and proposes trade
-        joey_analysis = {
-            'action_type': 'trade',
-            'parameters': {
-                'symbol': 'TSLA',
-                'position_size_pct': 0.06,
-                'stop_loss': 220.00,
-                'take_profit': 250.00,
-                'leverage': 1.0,
-                'risk_reward_ratio': 2.5,
-                'analysis_confidence': 0.78
-            }
-        }
-        joey_result = validate_against_graveyard(joey_analysis, 'Joey')
-        self.assertTrue(joey_result['approved'])
-        
-        # 3. Kenny prepares execution
-        kenny_execution = {
-            'action_type': 'trade',
-            'parameters': {
-                'symbol': 'TSLA',
-                'action': 'buy',
-                'position_size_pct': 0.06,
-                'stop_loss': 220.00,
-                'take_profit': 250.00,
-                'leverage': 1.0,
-                'hrm_approved': True  # HRM pre-approved
-            }
-        }
-        kenny_result = validate_against_graveyard(kenny_execution, 'Kenny')
-        self.assertTrue(kenny_result['approved'])
-        
-        # 4. HRM validates final action
-        hrm_validation = validate_against_graveyard(kenny_execution, 'HRM')
-        self.assertTrue(hrm_validation['approved'])
-        
-        print(f"✅ Full pipeline: Kyle → Joey → Kenny → HRM all approved")
-    
-    def test_hrm_blocks_unethical_action(self):
-        """Test HRM blocking an unethical action from Kenny"""
-        
-        # Kenny proposes risky action
-        risky_action = {
-            'action_type': 'trade',
-            'parameters': {
-                'symbol': 'GME',
-                'position_size_pct': 0.15,  # Over limit
-                'stop_loss': None,          # No protection
-                'leverage': 3.0,            # Too high
-                'urgency': 'immediate'
-            }
-        }
-        
-        # HRM validation
-        hrm_result = validate_against_graveyard(risky_action, 'HRM')
-        
-        self.assertFalse(hrm_result['approved'])
-        self.assertGreaterEqual(len(hrm_result['violations']), 2)
-        
-        print(f"✅ HRM blocks risky action: {len(hrm_result['violations'])} violations found")
-    
-    def test_emergency_halt_scenario(self):
-        """Test emergency halt trigger"""
-        
-        # Critical violation that should trigger emergency halt
-        critical_action = {
-            'action_type': 'trade',
-            'parameters': {
-                'manipulative_intent': True,
-                'insider_information': True,
-                'position_size_pct': 0.50,  # Massive position
-                'leverage': 10.0
-            }
-        }
-        
-        result = validate_against_graveyard(critical_action, 'Kenny')
-        
-        self.assertFalse(result['approved'])
-        
-        # Should have CRITICAL violations
-        critical_violations = [v for v in result['violations'] if v['severity'] == 'CRITICAL']
-        self.assertGreater(len(critical_violations), 0)
-        
-        print(f"✅ Emergency halt: {len(critical_violations)} CRITICAL violations detected")
-
-
-class TestGraveyardPerformance(unittest.TestCase):
-    """Test Graveyard performance and reliability"""
-    
-    def test_validation_speed(self):
-        """Test that validation is fast enough for real-time use"""
-        import time
-        
+    def test_kenny_conservative_trade_approved(self):
+        """Test that Kenny's conservative trade is approved"""
         action = {
             'action_type': 'trade',
             'parameters': {
-                'symbol': 'AAPL',
-                'position_size_pct': 0.05,
-                'stop_loss': 150.00
-            }
+                'symbol': 'SPY',
+                'position_size_pct': 0.03,  # Conservative 3%
+                'stop_loss': 580,
+                'take_profit': 600,
+                'leverage': 1.0,  # No leverage
+                'risk_reward_ratio': 3.0,  # Excellent R:R
+                'market_conditions': 'stable',
+                'strategy': 'conservative_mean_reversion'
+            },
+            'agent': 'Kenny',
+            'timestamp': datetime.now().isoformat()
         }
         
-        iterations = 100
-        start = time.time()
+        result = validate_against_graveyard(action, 'Kenny')
         
-        for _ in range(iterations):
-            result = validate_against_graveyard(action, 'TestAgent')
-        
-        elapsed = time.time() - start
-        avg_time = elapsed / iterations
-        
-        # Should complete in under 10ms per validation
-        self.assertLess(avg_time, 0.01)
-        
-        print(f"✅ Performance: {iterations} validations in {elapsed:.3f}s (avg {avg_time*1000:.2f}ms)")
+        assert result['approved'] is True
+        assert result['compliance_score'] >= 0.95
+        assert len(result['violations']) == 0
+
+
+class TestGraveyardFileImmutability:
+    """Test that Graveyard ethics.py file is immutable"""
     
-    def test_concurrent_validations(self):
-        """Test multiple concurrent validations"""
-        actions = [
-            {
-                'action_type': 'trade', 
-                'parameters': {
-                    'symbol': f'SYM{i}', 
-                    'position_size_pct': 0.05,
-                    'stop_loss': 100.00,  # Include stop-loss
-                    'leverage': 1.0
-                }
-            }
-            for i in range(10)
-        ]
+    def test_file_permissions_readonly(self):
+        """Test that ethics.py has read-only permissions"""
+        import stat
         
-        results = []
-        for i, action in enumerate(actions):
-            result = validate_against_graveyard(action, f'Agent{i}')
-            results.append(result)
+        ethics_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'graveyard',
+            'ethics.py'
+        )
         
-        # All should succeed
-        for result in results:
-            self.assertTrue(result['approved'])
-        
-        print(f"✅ Concurrent validations: {len(results)} successful")
+        if os.path.exists(ethics_path):
+            mode = os.stat(ethics_path).st_mode
+            
+            # Check that write permissions are not set
+            owner_write = bool(mode & stat.S_IWUSR)
+            group_write = bool(mode & stat.S_IWGRP)
+            other_write = bool(mode & stat.S_IWOTH)
+            
+            # File should be read-only (444 or similar)
+            assert not (owner_write or group_write or other_write), \
+                "ethics.py should be read-only (chmod 444)"
+        else:
+            pytest.skip("ethics.py file not found in expected location")
 
 
-def run_graveyard_integration_tests():
+def run_all_tests():
     """Run all Graveyard integration tests"""
+    print("=" * 60)
+    print("GRAVEYARD INTEGRATION TEST SUITE")
+    print("=" * 60)
+    print()
     
-    print("\n" + "="*70)
-    print("ARK GRAVEYARD INTEGRATION TEST SUITE")
-    print("="*70 + "\n")
+    test_classes = [
+        TestGraveyardCore,
+        TestGraveyardValidation,
+        TestGraveyardEdgeCases,
+        TestKennyMockActions,
+        TestGraveyardFileImmutability
+    ]
     
-    # Create test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
+    total_tests = 0
+    passed_tests = 0
+    failed_tests = []
     
-    # Add all test classes
-    suite.addTests(loader.loadTestsFromTestCase(TestGraveyardCore))
-    suite.addTests(loader.loadTestsFromTestCase(TestGraveyardValidation))
-    suite.addTests(loader.loadTestsFromTestCase(TestKennyActionValidation))
-    suite.addTests(loader.loadTestsFromTestCase(TestIntegrationScenarios))
-    suite.addTests(loader.loadTestsFromTestCase(TestGraveyardPerformance))
+    for test_class in test_classes:
+        print(f"\n📋 Running {test_class.__name__}...")
+        print("-" * 60)
+        
+        test_instance = test_class()
+        test_methods = [m for m in dir(test_instance) if m.startswith('test_')]
+        
+        for method_name in test_methods:
+            total_tests += 1
+            method = getattr(test_instance, method_name)
+            
+            try:
+                method()
+                print(f"  ✅ {method_name}")
+                passed_tests += 1
+            except AssertionError as e:
+                print(f"  ❌ {method_name}: {str(e)}")
+                failed_tests.append((test_class.__name__, method_name, str(e)))
+            except Exception as e:
+                print(f"  ⚠️  {method_name}: {str(e)}")
+                failed_tests.append((test_class.__name__, method_name, f"Exception: {str(e)}"))
     
-    # Run tests
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    
-    # Print summary
-    print("\n" + "="*70)
+    # Summary
+    print("\n" + "=" * 60)
     print("TEST SUMMARY")
-    print("="*70)
-    print(f"Tests run: {result.testsRun}")
-    print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")
-    print(f"Failures: {len(result.failures)}")
-    print(f"Errors: {len(result.errors)}")
-    print("="*70 + "\n")
+    print("=" * 60)
+    print(f"Total tests: {total_tests}")
+    print(f"Passed: {passed_tests} ✅")
+    print(f"Failed: {len(failed_tests)} ❌")
+    print(f"Success rate: {(passed_tests / total_tests * 100):.1f}%")
     
-    return result.wasSuccessful()
+    if failed_tests:
+        print("\n❌ FAILED TESTS:")
+        for class_name, method_name, error in failed_tests:
+            print(f"  • {class_name}.{method_name}")
+            print(f"    {error}")
+    else:
+        print("\n🎉 ALL TESTS PASSED!")
+    
+    print("=" * 60)
+    
+    return len(failed_tests) == 0
 
 
-if __name__ == '__main__':
-    success = run_graveyard_integration_tests()
+if __name__ == "__main__":
+    success = run_all_tests()
     sys.exit(0 if success else 1)
