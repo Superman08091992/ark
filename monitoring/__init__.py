@@ -1,8 +1,8 @@
 """
-ARK Monitoring - System Health and Compliance Monitoring
-This module contains the Watchdog service for agent monitoring and emergency controls
+ARK Monitoring - Watchdog System
+Lightweight async system monitor with emergency controls
 """
 
-from monitoring.watchdog import Watchdog, start_watchdog, stop_watchdog, get_watchdog_status
+from monitoring.watchdog import Watchdog, WatchdogConfig, get_system_health
 
-__all__ = ['Watchdog', 'start_watchdog', 'stop_watchdog', 'get_watchdog_status']
+__all__ = ['Watchdog', 'WatchdogConfig', 'get_system_health']

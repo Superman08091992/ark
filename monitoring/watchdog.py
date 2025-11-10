@@ -1,529 +1,663 @@
 """
 ARK Watchdog - System Monitoring and Emergency Controls
 
-Monitors:
-- Agent health (response times, errors, availability)
-- Graveyard compliance (rule violations, ethics breaches)
-- System resources (memory, CPU, queue depth)
-- Redis communication (message latency, failures)
+Lightweight async monitor that:
+- Tracks agent health (latency, failures, rule breaches)
+- Monitors Redis queue depth and performance
+- Detects anomalies and generates alerts
+- Provides emergency isolation/halt capabilities
+- Logs compliance trends for Graveyard violations
 
-Emergency Controls:
-- Emergency halt: Stop all agent task processing
-- Agent isolation: Quarantine misbehaving agents
-- Circuit breaker: Prevent cascade failures
+Architecture:
+- Async/await for non-blocking monitoring
+- Redis pub/sub for event streaming
+- Background health check loops (configurable intervals)
+- Automatic isolation when thresholds exceeded
 """
 
 import asyncio
 import time
-import redis
 import json
-import psutil
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
-from collections import deque
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, field
+from collections import deque, defaultdict
+try:
+    import redis.asyncio as aioredis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    aioredis = None
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AgentHealth:
-    """Health metrics for an agent"""
-    name: str
-    status: str  # 'healthy', 'degraded', 'unhealthy', 'offline'
-    last_heartbeat: float
-    response_time_avg_ms: float
-    response_time_p95_ms: float
-    error_count: int
-    error_rate: float
-    task_count: int
-    success_rate: float
-    violations_count: int
-    last_violation: Optional[str]
-    uptime_seconds: float
+class WatchdogConfig:
+    """Watchdog configuration"""
     
+    # Health check intervals (seconds)
+    agent_check_interval: float = 5.0  # Check agents every 5s
+    redis_check_interval: float = 2.0  # Check Redis every 2s
+    graveyard_check_interval: float = 10.0  # Check compliance every 10s
+    
+    # Thresholds for automatic action
+    max_agent_latency_ms: float = 5000.0  # 5 seconds max response time
+    max_agent_failure_rate: float = 0.20  # 20% max failure rate
+    max_queue_depth: int = 1000  # Maximum Redis queue depth
+    max_graveyard_violations_per_minute: int = 10  # Max violations/min
+    max_consecutive_failures: int = 5  # Halt agent after 5 failures
+    
+    # Alert levels
+    warning_threshold: float = 0.70  # Warn at 70% of limits
+    critical_threshold: float = 0.90  # Critical at 90% of limits
+    
+    # History tracking
+    metrics_history_size: int = 1000  # Keep last 1000 metrics
+    event_history_size: int = 5000  # Keep last 5000 events
+    
+    # Emergency controls
+    enable_auto_isolation: bool = True  # Auto-isolate failing agents
+    enable_emergency_halt: bool = True  # Allow emergency stop
+
 
 @dataclass
-class SystemHealth:
-    """Overall system health"""
-    status: str  # 'healthy', 'degraded', 'critical', 'emergency'
-    timestamp: str
-    uptime_seconds: float
-    agents_healthy: int
-    agents_degraded: int
-    agents_unhealthy: int
-    agents_offline: int
-    total_agents: int
-    redis_connected: bool
-    redis_latency_ms: float
-    queue_depth: int
-    memory_usage_pct: float
-    cpu_usage_pct: float
-    graveyard_violations_total: int
-    graveyard_violations_critical: int
-    emergency_halt_active: bool
+class AgentMetrics:
+    """Metrics for a single agent"""
+    agent_name: str
+    last_seen: float = 0.0
+    total_requests: int = 0
+    successful_requests: int = 0
+    failed_requests: int = 0
+    total_latency_ms: float = 0.0
+    consecutive_failures: int = 0
+    isolated: bool = False
+    graveyard_violations: int = 0
+    recent_latencies: deque = field(default_factory=lambda: deque(maxlen=100))
+    recent_failures: deque = field(default_factory=lambda: deque(maxlen=100))
+    
+    @property
+    def failure_rate(self) -> float:
+        """Calculate failure rate"""
+        if self.total_requests == 0:
+            return 0.0
+        return self.failed_requests / self.total_requests
+    
+    @property
+    def avg_latency_ms(self) -> float:
+        """Calculate average latency"""
+        if len(self.recent_latencies) == 0:
+            return 0.0
+        return sum(self.recent_latencies) / len(self.recent_latencies)
+    
+    @property
+    def success_rate(self) -> float:
+        """Calculate success rate"""
+        if self.total_requests == 0:
+            return 1.0
+        return self.successful_requests / self.total_requests
+    
+    @property
+    def health_score(self) -> float:
+        """Calculate overall health score (0.0 to 1.0)"""
+        # Combine success rate, latency, and recency
+        recency_factor = 1.0 if time.time() - self.last_seen < 60 else 0.5
+        latency_factor = max(0.0, 1.0 - (self.avg_latency_ms / 10000.0))  # Normalize to 10s max
+        return (self.success_rate * 0.5 + latency_factor * 0.3 + recency_factor * 0.2)
 
 
 class Watchdog:
     """
-    System monitoring and emergency control service.
+    ARK Watchdog - System monitoring and emergency controls
     
-    Runs as an async background service monitoring all agents and system health.
-    Can trigger emergency halt if critical violations detected.
+    Monitors:
+    - Agent health (6 agents: Kyle, Joey, Kenny, HRM, Aletheia, ID)
+    - Redis queue depth and performance
+    - Graveyard compliance trends
+    - System-wide anomalies
+    
+    Capabilities:
+    - Real-time health tracking
+    - Automatic agent isolation
+    - Emergency system halt
+    - Alert generation
+    - Compliance reporting
     """
     
-    def __init__(self, redis_host: str = 'redis', redis_port: int = 6379):
-        self.redis_host = redis_host
-        self.redis_port = redis_port
-        self.redis_client: Optional[redis.Redis] = None
+    def __init__(self, config: Optional[WatchdogConfig] = None, redis_url: str = "redis://redis:6379"):
+        self.config = config or WatchdogConfig()
+        self.redis_url = redis_url
+        self.redis: Optional[aioredis.Redis] = None
         
-        # Watchdog state
+        # Agent tracking
+        self.agent_names = ['Kyle', 'Joey', 'Kenny', 'HRM', 'Aletheia', 'ID']
+        self.agent_metrics: Dict[str, AgentMetrics] = {
+            name: AgentMetrics(agent_name=name) for name in self.agent_names
+        }
+        
+        # System state
         self.running = False
-        self.start_time = time.time()
         self.emergency_halt = False
-        self.isolated_agents = set()
+        self.start_time = time.time()
         
-        # Health tracking
-        self.agent_health: Dict[str, AgentHealth] = {}
-        self.system_health: Optional[SystemHealth] = None
+        # Event tracking
+        self.events: deque = deque(maxlen=self.config.event_history_size)
+        self.alerts: deque = deque(maxlen=self.config.metrics_history_size)
         
-        # Metrics history (last 100 datapoints)
-        self.response_times: Dict[str, deque] = {}
-        self.error_counts: Dict[str, deque] = {}
-        self.violation_history: deque = deque(maxlen=100)
+        # Redis metrics
+        self.redis_queue_depth = 0
+        self.redis_latency_ms = 0.0
+        self.redis_last_check = 0.0
         
-        # Initialize metrics
-        self.system_metrics = {
-            'redis_connected': False,
-            'redis_latency_ms': 0,
-            'queue_depth': 0,
-            'memory_usage_pct': 0,
-            'cpu_usage_pct': 0
-        }
-        self.graveyard_metrics = {
-            'total_violations': 0,
-            'critical_violations': 0
-        }
+        # Graveyard compliance tracking
+        self.graveyard_violations_last_minute: deque = deque(maxlen=100)
         
-        # Configuration
-        self.config = {
-            'check_interval_seconds': 5,
-            'heartbeat_timeout_seconds': 30,
-            'response_time_threshold_ms': 5000,  # 5 second threshold
-            'error_rate_threshold': 0.20,  # 20% error rate
-            'violation_rate_threshold': 0.10,  # 10% violation rate
-            'critical_violations_threshold': 3,  # 3 critical violations triggers halt
-            'queue_depth_threshold': 100,
-            'memory_threshold_pct': 90.0,
-            'cpu_threshold_pct': 90.0
-        }
+        logger.info("🐕 Watchdog initialized with config: %s", self.config)
+    
+    async def connect(self):
+        """Connect to Redis"""
+        if not REDIS_AVAILABLE:
+            logger.warning("Redis library not available, running in standalone mode")
+            return
         
-        logger.info("Watchdog initialized")
+        try:
+            self.redis = await aioredis.from_url(
+                self.redis_url,
+                encoding="utf-8",
+                decode_responses=True
+            )
+            logger.info("🐕 Watchdog connected to Redis")
+        except Exception as e:
+            logger.error(f"Watchdog Redis connection failed: {e}")
+            # Don't raise - allow standalone operation
+            self.redis = None
+    
+    async def disconnect(self):
+        """Disconnect from Redis"""
+        if self.redis:
+            await self.redis.close()
+            logger.info("🐕 Watchdog disconnected from Redis")
     
     async def start(self):
-        """Start Watchdog monitoring"""
+        """Start Watchdog monitoring (non-blocking)"""
         if self.running:
             logger.warning("Watchdog already running")
             return
         
-        logger.info("Starting Watchdog monitoring service...")
-        
-        # Connect to Redis
-        try:
-            self.redis_client = redis.Redis(
-                host=self.redis_host,
-                port=self.redis_port,
-                decode_responses=True,
-                socket_connect_timeout=5
-            )
-            self.redis_client.ping()
-            logger.info("Watchdog connected to Redis")
-        except Exception as e:
-            logger.error(f"Watchdog failed to connect to Redis: {e}")
-            self.redis_client = None
-        
         self.running = True
         self.start_time = time.time()
         
-        # Start monitoring loop
-        asyncio.create_task(self._monitoring_loop())
+        logger.info("🐕 Watchdog starting monitoring...")
         
-        logger.info("✅ Watchdog monitoring active")
+        # Start background monitoring tasks
+        await asyncio.gather(
+            self._monitor_agents(),
+            self._monitor_redis(),
+            self._monitor_graveyard(),
+            self._process_events(),
+            return_exceptions=True
+        )
     
     async def stop(self):
         """Stop Watchdog monitoring"""
-        logger.info("Stopping Watchdog...")
         self.running = False
-        
-        if self.redis_client:
-            self.redis_client.close()
-        
-        logger.info("✅ Watchdog stopped")
+        logger.info("🐕 Watchdog stopped")
     
-    async def _monitoring_loop(self):
-        """Main monitoring loop"""
+    async def _monitor_agents(self):
+        """Monitor agent health in background loop"""
+        logger.info("🐕 Agent monitoring started")
+        
         while self.running:
             try:
-                # Collect health metrics
-                await self._collect_agent_health()
-                await self._collect_system_metrics()
+                for agent_name in self.agent_names:
+                    await self._check_agent_health(agent_name)
                 
-                # Check for violations
-                await self._check_graveyard_compliance()
+                await asyncio.sleep(self.config.agent_check_interval)
                 
-                # Evaluate system health
-                await self._evaluate_system_health()
-                
-                # Check for emergency conditions
-                await self._check_emergency_conditions()
-                
-                # Publish health status to Redis
-                await self._publish_health_status()
-                
+            except asyncio.CancelledError:
+                break
             except Exception as e:
-                logger.error(f"Watchdog monitoring error: {e}")
-            
-            # Sleep until next check
-            await asyncio.sleep(self.config['check_interval_seconds'])
+                logger.error(f"Agent monitoring error: {e}")
+                await asyncio.sleep(self.config.agent_check_interval)
     
-    async def _collect_agent_health(self):
-        """Collect health metrics for all agents"""
-        if not self.redis_client:
-            return
+    async def _monitor_redis(self):
+        """Monitor Redis queue and performance in background loop"""
+        logger.info("🐕 Redis monitoring started")
         
-        agents = ['Kyle', 'Joey', 'Kenny', 'HRM', 'Aletheia', 'ID']
-        
-        for agent_name in agents:
+        while self.running:
             try:
-                # Get agent heartbeat from Redis
-                heartbeat_key = f"agent_heartbeat:{agent_name}"
-                heartbeat = self.redis_client.get(heartbeat_key)
+                # Check Redis health
+                start = time.time()
                 
-                if heartbeat:
-                    heartbeat_time = float(heartbeat)
-                    time_since_heartbeat = time.time() - heartbeat_time
-                    
-                    # Get agent metrics
-                    metrics_key = f"agent_metrics:{agent_name}"
-                    metrics = self.redis_client.get(metrics_key)
-                    
-                    if metrics:
-                        metrics_data = json.loads(metrics)
-                        
-                        # Determine agent status
-                        if time_since_heartbeat > self.config['heartbeat_timeout_seconds']:
-                            status = 'offline'
-                        elif metrics_data.get('error_rate', 0) > self.config['error_rate_threshold']:
-                            status = 'unhealthy'
-                        elif metrics_data.get('response_time_avg_ms', 0) > self.config['response_time_threshold_ms']:
-                            status = 'degraded'
-                        else:
-                            status = 'healthy'
-                        
-                        # Update agent health
-                        self.agent_health[agent_name] = AgentHealth(
-                            name=agent_name,
-                            status=status,
-                            last_heartbeat=heartbeat_time,
-                            response_time_avg_ms=metrics_data.get('response_time_avg_ms', 0),
-                            response_time_p95_ms=metrics_data.get('response_time_p95_ms', 0),
-                            error_count=metrics_data.get('error_count', 0),
-                            error_rate=metrics_data.get('error_rate', 0),
-                            task_count=metrics_data.get('task_count', 0),
-                            success_rate=metrics_data.get('success_rate', 1.0),
-                            violations_count=metrics_data.get('violations_count', 0),
-                            last_violation=metrics_data.get('last_violation'),
-                            uptime_seconds=time.time() - self.start_time
-                        )
-                else:
-                    # No heartbeat - agent is offline
-                    self.agent_health[agent_name] = AgentHealth(
-                        name=agent_name,
-                        status='offline',
-                        last_heartbeat=0,
-                        response_time_avg_ms=0,
-                        response_time_p95_ms=0,
-                        error_count=0,
-                        error_rate=0,
-                        task_count=0,
-                        success_rate=0,
-                        violations_count=0,
-                        last_violation=None,
-                        uptime_seconds=0
+                # Queue depth
+                self.redis_queue_depth = await self.redis.llen('agent_tasks') if self.redis else 0
+                
+                # Latency
+                await self.redis.ping() if self.redis else None
+                self.redis_latency_ms = (time.time() - start) * 1000
+                self.redis_last_check = time.time()
+                
+                # Check thresholds
+                if self.redis_queue_depth > self.config.max_queue_depth:
+                    await self._generate_alert(
+                        'CRITICAL',
+                        'redis_queue_overload',
+                        f"Redis queue depth {self.redis_queue_depth} exceeds maximum {self.config.max_queue_depth}"
                     )
-            
+                
+                await asyncio.sleep(self.config.redis_check_interval)
+                
+            except asyncio.CancelledError:
+                break
             except Exception as e:
-                logger.error(f"Error collecting health for {agent_name}: {e}")
+                logger.error(f"Redis monitoring error: {e}")
+                await asyncio.sleep(self.config.redis_check_interval)
     
-    async def _collect_system_metrics(self):
-        """Collect system-level metrics"""
-        if not self.redis_client:
+    async def _monitor_graveyard(self):
+        """Monitor Graveyard compliance trends in background loop"""
+        logger.info("🐕 Graveyard monitoring started")
+        
+        while self.running:
+            try:
+                # Check violation rate
+                current_time = time.time()
+                one_minute_ago = current_time - 60
+                
+                # Count violations in last minute
+                recent_violations = [
+                    v for v in self.graveyard_violations_last_minute
+                    if v > one_minute_ago
+                ]
+                
+                violations_per_minute = len(recent_violations)
+                
+                if violations_per_minute > self.config.max_graveyard_violations_per_minute:
+                    await self._generate_alert(
+                        'CRITICAL',
+                        'graveyard_violation_spike',
+                        f"Graveyard violations ({violations_per_minute}/min) exceed threshold ({self.config.max_graveyard_violations_per_minute}/min)"
+                    )
+                
+                await asyncio.sleep(self.config.graveyard_check_interval)
+                
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Graveyard monitoring error: {e}")
+                await asyncio.sleep(self.config.graveyard_check_interval)
+    
+    async def _process_events(self):
+        """Process events from Redis pub/sub in background loop"""
+        logger.info("🐕 Event processing started")
+        
+        if not self.redis:
+            logger.warning("Redis not connected, event processing disabled")
             return
         
         try:
-            # Redis latency check
-            start = time.time()
-            self.redis_client.ping()
-            redis_latency_ms = (time.time() - start) * 1000
+            pubsub = self.redis.pubsub()
+            await pubsub.subscribe('agent_events', 'graveyard_events', 'system_events')
             
-            # Queue depth
-            queue_depth = self.redis_client.llen('agent_tasks')
+            while self.running:
+                try:
+                    message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                    
+                    if message:
+                        await self._handle_event(message)
+                    
+                    await asyncio.sleep(0.1)  # Small delay to prevent CPU spinning
+                    
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    logger.error(f"Event processing error: {e}")
             
-            # System resources
-            memory = psutil.virtual_memory()
-            cpu = psutil.cpu_percent(interval=0.1)
-            
-            # Store metrics
-            self.system_metrics = {
-                'redis_connected': True,
-                'redis_latency_ms': redis_latency_ms,
-                'queue_depth': queue_depth,
-                'memory_usage_pct': memory.percent,
-                'cpu_usage_pct': cpu
-            }
+            await pubsub.unsubscribe()
+            await pubsub.close()
             
         except Exception as e:
-            logger.error(f"Error collecting system metrics: {e}")
-            self.system_metrics = {
-                'redis_connected': False,
-                'redis_latency_ms': 0,
-                'queue_depth': 0,
-                'memory_usage_pct': 0,
-                'cpu_usage_pct': 0
-            }
+            logger.error(f"Event subscription error: {e}")
     
-    async def _check_graveyard_compliance(self):
-        """Check for Graveyard rule violations"""
-        if not self.redis_client:
-            return
+    async def _check_agent_health(self, agent_name: str):
+        """Check health of a specific agent"""
+        metrics = self.agent_metrics[agent_name]
         
+        # Check for isolation conditions
+        if self.config.enable_auto_isolation and not metrics.isolated:
+            # Isolate if consecutive failures exceed threshold
+            if metrics.consecutive_failures >= self.config.max_consecutive_failures:
+                await self.isolate_agent(agent_name, f"Consecutive failures: {metrics.consecutive_failures}")
+            
+            # Isolate if failure rate too high
+            elif metrics.failure_rate > self.config.max_agent_failure_rate and metrics.total_requests > 10:
+                await self.isolate_agent(agent_name, f"Failure rate: {metrics.failure_rate:.1%}")
+            
+            # Isolate if latency too high
+            elif metrics.avg_latency_ms > self.config.max_agent_latency_ms and len(metrics.recent_latencies) > 10:
+                await self.isolate_agent(agent_name, f"Average latency: {metrics.avg_latency_ms:.0f}ms")
+        
+        # Check for warnings
+        if not metrics.isolated:
+            # Warn if approaching limits
+            if metrics.failure_rate > self.config.max_agent_failure_rate * self.config.warning_threshold:
+                await self._generate_alert(
+                    'WARNING',
+                    f'{agent_name}_high_failure_rate',
+                    f"{agent_name} failure rate {metrics.failure_rate:.1%} approaching limit"
+                )
+            
+            if metrics.avg_latency_ms > self.config.max_agent_latency_ms * self.config.warning_threshold:
+                await self._generate_alert(
+                    'WARNING',
+                    f'{agent_name}_high_latency',
+                    f"{agent_name} latency {metrics.avg_latency_ms:.0f}ms approaching limit"
+                )
+    
+    async def _handle_event(self, message: Dict[str, Any]):
+        """Handle incoming event from Redis pub/sub"""
         try:
-            # Get violation count from Redis
-            violation_key = "graveyard_violations:total"
-            total_violations = int(self.redis_client.get(violation_key) or 0)
+            channel = message.get('channel', '')
+            data_str = message.get('data', '{}')
             
-            critical_key = "graveyard_violations:critical"
-            critical_violations = int(self.redis_client.get(critical_key) or 0)
+            if isinstance(data_str, bytes):
+                data_str = data_str.decode('utf-8')
             
-            self.graveyard_metrics = {
-                'total_violations': total_violations,
-                'critical_violations': critical_violations
-            }
+            data = json.loads(data_str) if isinstance(data_str, str) else data_str
             
-            # Record violation history
-            self.violation_history.append({
+            # Record event
+            event = {
                 'timestamp': time.time(),
-                'total': total_violations,
-                'critical': critical_violations
-            })
+                'channel': channel,
+                'data': data
+            }
+            self.events.append(event)
+            
+            # Process agent events
+            if channel == 'agent_events':
+                agent_name = data.get('agent')
+                event_type = data.get('type')
+                
+                if agent_name and event_type:
+                    await self._update_agent_metrics(agent_name, event_type, data)
+            
+            # Process graveyard events
+            elif channel == 'graveyard_events':
+                event_type = data.get('type')
+                
+                if event_type == 'violation':
+                    self.graveyard_violations_last_minute.append(time.time())
+                    agent_name = data.get('agent')
+                    if agent_name and agent_name in self.agent_metrics:
+                        self.agent_metrics[agent_name].graveyard_violations += 1
             
         except Exception as e:
-            logger.error(f"Error checking Graveyard compliance: {e}")
-            self.graveyard_metrics = {
-                'total_violations': 0,
-                'critical_violations': 0
-            }
+            logger.error(f"Event handling error: {e}")
     
-    async def _evaluate_system_health(self):
-        """Evaluate overall system health"""
+    async def _update_agent_metrics(self, agent_name: str, event_type: str, data: Dict[str, Any]):
+        """Update agent metrics based on event"""
+        if agent_name not in self.agent_metrics:
+            return
         
-        # Count agent statuses
-        agents_healthy = sum(1 for h in self.agent_health.values() if h.status == 'healthy')
-        agents_degraded = sum(1 for h in self.agent_health.values() if h.status == 'degraded')
-        agents_unhealthy = sum(1 for h in self.agent_health.values() if h.status == 'unhealthy')
-        agents_offline = sum(1 for h in self.agent_health.values() if h.status == 'offline')
-        total_agents = len(self.agent_health)
+        metrics = self.agent_metrics[agent_name]
+        metrics.last_seen = time.time()
         
-        # Determine overall system status
-        if self.emergency_halt:
-            status = 'emergency'
-        elif agents_unhealthy > 0 or agents_offline > 2:
-            status = 'critical'
-        elif agents_degraded > 1 or agents_offline > 0:
-            status = 'degraded'
-        else:
-            status = 'healthy'
-        
-        # Check system metrics
-        if hasattr(self, 'system_metrics'):
-            if self.system_metrics.get('memory_usage_pct', 0) > self.config['memory_threshold_pct']:
-                status = 'critical' if status == 'healthy' else status
-            if self.system_metrics.get('cpu_usage_pct', 0) > self.config['cpu_threshold_pct']:
-                status = 'degraded' if status == 'healthy' else status
-        
-        # Build system health
-        self.system_health = SystemHealth(
-            status=status,
-            timestamp=datetime.now().isoformat(),
-            uptime_seconds=time.time() - self.start_time,
-            agents_healthy=agents_healthy,
-            agents_degraded=agents_degraded,
-            agents_unhealthy=agents_unhealthy,
-            agents_offline=agents_offline,
-            total_agents=total_agents,
-            redis_connected=self.system_metrics.get('redis_connected', False),
-            redis_latency_ms=self.system_metrics.get('redis_latency_ms', 0),
-            queue_depth=self.system_metrics.get('queue_depth', 0),
-            memory_usage_pct=self.system_metrics.get('memory_usage_pct', 0),
-            cpu_usage_pct=self.system_metrics.get('cpu_usage_pct', 0),
-            graveyard_violations_total=self.graveyard_metrics.get('total_violations', 0),
-            graveyard_violations_critical=self.graveyard_metrics.get('critical_violations', 0),
-            emergency_halt_active=self.emergency_halt
-        )
-    
-    async def _check_emergency_conditions(self):
-        """Check for conditions requiring emergency halt"""
-        
-        # Check critical violations threshold
-        if hasattr(self, 'graveyard_metrics'):
-            critical_violations = self.graveyard_metrics.get('critical_violations', 0)
+        if event_type == 'request':
+            metrics.total_requests += 1
             
-            if critical_violations >= self.config['critical_violations_threshold']:
-                logger.critical(f"🚨 EMERGENCY: {critical_violations} critical violations detected!")
-                await self.trigger_emergency_halt("Critical Graveyard violations threshold exceeded")
+            # Track latency if provided
+            latency_ms = data.get('latency_ms', 0)
+            if latency_ms > 0:
+                metrics.recent_latencies.append(latency_ms)
+                metrics.total_latency_ms += latency_ms
         
-        # Check for catastrophic system failures
-        if self.system_health:
-            if self.system_health.agents_offline >= 4:  # More than half agents offline
-                logger.critical("🚨 EMERGENCY: Majority of agents offline!")
-                await self.trigger_emergency_halt("Catastrophic agent failure")
-    
-    async def trigger_emergency_halt(self, reason: str):
-        """Trigger emergency halt of all agent processing"""
-        if self.emergency_halt:
-            return  # Already halted
+        elif event_type == 'success':
+            metrics.successful_requests += 1
+            metrics.consecutive_failures = 0  # Reset
         
-        logger.critical(f"🚨🚨🚨 EMERGENCY HALT TRIGGERED: {reason} 🚨🚨🚨")
-        
-        self.emergency_halt = True
-        
-        # Publish emergency halt to Redis
-        if self.redis_client:
-            self.redis_client.set('system_emergency_halt', 'true')
-            self.redis_client.set('emergency_halt_reason', reason)
-            self.redis_client.set('emergency_halt_timestamp', time.time())
-            
-            # Publish to emergency channel
-            self.redis_client.publish('emergency_halt', json.dumps({
-                'reason': reason,
-                'timestamp': datetime.now().isoformat(),
-                'watchdog': 'active'
-            }))
-        
-        logger.critical("All agent task processing halted")
-    
-    async def clear_emergency_halt(self):
-        """Clear emergency halt (manual intervention)"""
-        logger.warning("Clearing emergency halt...")
-        
-        self.emergency_halt = False
-        
-        if self.redis_client:
-            self.redis_client.delete('system_emergency_halt')
-            self.redis_client.delete('emergency_halt_reason')
-            
-            # Publish clear message
-            self.redis_client.publish('emergency_clear', json.dumps({
-                'timestamp': datetime.now().isoformat(),
-                'watchdog': 'active'
-            }))
-        
-        logger.info("✅ Emergency halt cleared")
+        elif event_type == 'failure':
+            metrics.failed_requests += 1
+            metrics.consecutive_failures += 1
+            metrics.recent_failures.append(time.time())
     
     async def isolate_agent(self, agent_name: str, reason: str):
-        """Isolate a misbehaving agent"""
-        logger.warning(f"Isolating agent {agent_name}: {reason}")
+        """Isolate an agent (stop processing its tasks)"""
+        if agent_name not in self.agent_metrics:
+            logger.error(f"Cannot isolate unknown agent: {agent_name}")
+            return
         
-        self.isolated_agents.add(agent_name)
+        metrics = self.agent_metrics[agent_name]
         
-        if self.redis_client:
-            isolation_key = f"agent_isolated:{agent_name}"
-            self.redis_client.set(isolation_key, json.dumps({
+        if metrics.isolated:
+            logger.warning(f"Agent {agent_name} already isolated")
+            return
+        
+        metrics.isolated = True
+        
+        await self._generate_alert(
+            'CRITICAL',
+            f'{agent_name}_isolated',
+            f"Agent {agent_name} isolated: {reason}"
+        )
+        
+        # Publish isolation event
+        if self.redis:
+            await self.redis.publish('system_events', json.dumps({
+                'type': 'agent_isolated',
+                'agent': agent_name,
                 'reason': reason,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': time.time()
             }))
         
-        logger.info(f"✅ Agent {agent_name} isolated")
+        logger.warning(f"🚨 Agent {agent_name} ISOLATED: {reason}")
     
     async def restore_agent(self, agent_name: str):
         """Restore an isolated agent"""
-        logger.info(f"Restoring agent {agent_name}...")
+        if agent_name not in self.agent_metrics:
+            logger.error(f"Cannot restore unknown agent: {agent_name}")
+            return
         
-        self.isolated_agents.discard(agent_name)
+        metrics = self.agent_metrics[agent_name]
         
-        if self.redis_client:
-            isolation_key = f"agent_isolated:{agent_name}"
-            self.redis_client.delete(isolation_key)
+        if not metrics.isolated:
+            logger.warning(f"Agent {agent_name} not isolated")
+            return
+        
+        metrics.isolated = False
+        metrics.consecutive_failures = 0  # Reset
+        
+        # Publish restoration event
+        if self.redis:
+            await self.redis.publish('system_events', json.dumps({
+                'type': 'agent_restored',
+                'agent': agent_name,
+                'timestamp': time.time()
+            }))
         
         logger.info(f"✅ Agent {agent_name} restored")
     
-    async def _publish_health_status(self):
-        """Publish health status to Redis"""
-        if not self.redis_client:
-            return
+    async def emergency_stop(self, reason: str):
+        """Emergency halt of the entire system"""
+        if not self.config.enable_emergency_halt:
+            logger.error("Emergency halt disabled in config")
+            return False
         
-        try:
-            # Publish system health
-            if self.system_health:
-                self.redis_client.set(
-                    'watchdog_system_health',
-                    json.dumps(asdict(self.system_health)),
-                    ex=60  # 60 second TTL
-                )
-            
-            # Publish agent health
-            for agent_name, health in self.agent_health.items():
-                self.redis_client.set(
-                    f'watchdog_agent_health:{agent_name}',
-                    json.dumps(asdict(health)),
-                    ex=60
-                )
+        self.emergency_halt = True
         
-        except Exception as e:
-            logger.error(f"Error publishing health status: {e}")
+        await self._generate_alert(
+            'EMERGENCY',
+            'system_emergency_halt',
+            f"EMERGENCY STOP: {reason}"
+        )
+        
+        # Isolate all agents
+        for agent_name in self.agent_names:
+            await self.isolate_agent(agent_name, "Emergency stop")
+        
+        # Publish emergency halt event
+        if self.redis:
+            await self.redis.publish('system_events', json.dumps({
+                'type': 'emergency_halt',
+                'reason': reason,
+                'timestamp': time.time()
+            }))
+        
+        logger.critical(f"🚨🚨🚨 EMERGENCY HALT: {reason}")
+        
+        return True
     
-    def get_status(self) -> Dict[str, Any]:
-        """Get current Watchdog status"""
+    async def _generate_alert(self, level: str, alert_type: str, message: str):
+        """Generate an alert"""
+        alert = {
+            'timestamp': time.time(),
+            'level': level,
+            'type': alert_type,
+            'message': message
+        }
+        
+        self.alerts.append(alert)
+        
+        # Log based on level
+        if level == 'EMERGENCY':
+            logger.critical(f"🚨 ALERT [{level}] {alert_type}: {message}")
+        elif level == 'CRITICAL':
+            logger.error(f"🚨 ALERT [{level}] {alert_type}: {message}")
+        elif level == 'WARNING':
+            logger.warning(f"⚠️  ALERT [{level}] {alert_type}: {message}")
+        else:
+            logger.info(f"ℹ️  ALERT [{level}] {alert_type}: {message}")
+        
+        # Publish alert
+        if self.redis:
+            await self.redis.publish('alerts', json.dumps(alert))
+    
+    def get_system_health(self) -> Dict[str, Any]:
+        """Get current system health status"""
+        uptime = time.time() - self.start_time
+        
+        # Agent health summary
+        agents_health = {}
+        for agent_name, metrics in self.agent_metrics.items():
+            agents_health[agent_name] = {
+                'health_score': round(metrics.health_score, 3),
+                'success_rate': round(metrics.success_rate, 3),
+                'avg_latency_ms': round(metrics.avg_latency_ms, 2),
+                'total_requests': metrics.total_requests,
+                'failures': metrics.failed_requests,
+                'isolated': metrics.isolated,
+                'graveyard_violations': metrics.graveyard_violations,
+                'last_seen_ago_seconds': round(time.time() - metrics.last_seen, 1) if metrics.last_seen > 0 else None
+            }
+        
+        # Overall system health (average agent health)
+        agent_scores = [m.health_score for m in self.agent_metrics.values() if not m.isolated]
+        system_health_score = sum(agent_scores) / len(agent_scores) if agent_scores else 0.0
+        
+        # Recent alerts
+        recent_alerts = list(self.alerts)[-10:]  # Last 10 alerts
+        
         return {
-            'running': self.running,
-            'uptime_seconds': time.time() - self.start_time if self.running else 0,
-            'emergency_halt': self.emergency_halt,
-            'isolated_agents': list(self.isolated_agents),
-            'system_health': asdict(self.system_health) if self.system_health else None,
-            'agent_health': {name: asdict(health) for name, health in self.agent_health.items()},
-            'config': self.config
+            'status': 'emergency_halt' if self.emergency_halt else 'running' if self.running else 'stopped',
+            'uptime_seconds': round(uptime, 1),
+            'system_health_score': round(system_health_score, 3),
+            'agents': agents_health,
+            'redis': {
+                'queue_depth': self.redis_queue_depth,
+                'latency_ms': round(self.redis_latency_ms, 2),
+                'last_check_ago_seconds': round(time.time() - self.redis_last_check, 1) if self.redis_last_check > 0 else None
+            },
+            'graveyard': {
+                'violations_last_minute': len([v for v in self.graveyard_violations_last_minute if v > time.time() - 60]),
+                'total_violations': sum(m.graveyard_violations for m in self.agent_metrics.values())
+            },
+            'recent_alerts': recent_alerts,
+            'config': {
+                'auto_isolation_enabled': self.config.enable_auto_isolation,
+                'emergency_halt_enabled': self.config.enable_emergency_halt
+            }
         }
 
 
-# Global Watchdog instance
-_watchdog_instance: Optional[Watchdog] = None
+# Convenience function
+async def get_system_health(redis_url: str = "redis://redis:6379") -> Dict[str, Any]:
+    """Quick system health check (standalone function)"""
+    watchdog = Watchdog(redis_url=redis_url)
+    try:
+        await watchdog.connect()
+        health = watchdog.get_system_health()
+        await watchdog.disconnect()
+        return health
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            'status': 'error',
+            'error': str(e)
+        }
 
 
-async def start_watchdog(redis_host: str = 'redis', redis_port: int = 6379) -> Watchdog:
-    """Start the global Watchdog instance"""
-    global _watchdog_instance
+# CLI for testing
+if __name__ == "__main__":
+    import sys
     
-    if _watchdog_instance is None:
-        _watchdog_instance = Watchdog(redis_host, redis_port)
+    async def main():
+        print("=" * 60)
+        print("ARK WATCHDOG - System Monitor")
+        print("=" * 60)
+        print()
+        
+        # Create Watchdog
+        config = WatchdogConfig(
+            agent_check_interval=2.0,
+            redis_check_interval=1.0,
+            graveyard_check_interval=5.0
+        )
+        
+        watchdog = Watchdog(config=config, redis_url="redis://localhost:6379")
+        
+        try:
+            print("Connecting to Redis...")
+            await watchdog.connect()
+            print("✅ Connected\n")
+            
+            print("Starting Watchdog monitoring...")
+            print("(Press Ctrl+C to stop)\n")
+            
+            # Start monitoring in background
+            monitor_task = asyncio.create_task(watchdog.start())
+            
+            # Periodically print status
+            while True:
+                await asyncio.sleep(10)
+                
+                health = watchdog.get_system_health()
+                print(f"\n{'=' * 60}")
+                print(f"System Health: {health['system_health_score']:.1%}")
+                print(f"Uptime: {health['uptime_seconds']:.0f}s")
+                print(f"{'=' * 60}")
+                
+                for agent_name, agent_health in health['agents'].items():
+                    status = "🔴 ISOLATED" if agent_health['isolated'] else "🟢 OK"
+                    print(f"{agent_name:10} {status} | Health: {agent_health['health_score']:.1%} | "
+                          f"Requests: {agent_health['total_requests']} | "
+                          f"Failures: {agent_health['failures']}")
+                
+                print(f"\nRedis Queue: {health['redis']['queue_depth']} tasks")
+                print(f"Graveyard Violations (last min): {health['graveyard']['violations_last_minute']}")
+                
+                if health['recent_alerts']:
+                    print(f"\nRecent Alerts ({len(health['recent_alerts'])}):")
+                    for alert in health['recent_alerts'][-3:]:
+                        print(f"  [{alert['level']}] {alert['message']}")
+        
+        except KeyboardInterrupt:
+            print("\n\nStopping Watchdog...")
+            await watchdog.stop()
+            await watchdog.disconnect()
+            print("✅ Stopped")
+        
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+            await watchdog.disconnect()
+            sys.exit(1)
     
-    await _watchdog_instance.start()
-    return _watchdog_instance
-
-
-async def stop_watchdog():
-    """Stop the global Watchdog instance"""
-    global _watchdog_instance
-    
-    if _watchdog_instance:
-        await _watchdog_instance.stop()
-
-
-def get_watchdog_status() -> Dict[str, Any]:
-    """Get status of global Watchdog instance"""
-    global _watchdog_instance
-    
-    if _watchdog_instance:
-        return _watchdog_instance.get_status()
-    else:
-        return {'running': False, 'error': 'Watchdog not initialized'}
+    asyncio.run(main())

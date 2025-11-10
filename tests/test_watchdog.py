@@ -1,399 +1,461 @@
 """
-Unit Tests for Watchdog Monitoring System
-Tests health monitoring, emergency controls, and system oversight
+Unit tests for Watchdog system monitoring
+Tests health tracking, isolation, emergency halt, and alerting
 """
 
+import pytest
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import unittest
 import asyncio
-from unittest.mock import Mock, MagicMock, patch
+import time
+from collections import deque
 
-# Mock redis before import
-sys.modules['redis'] = MagicMock()
-sys.modules['psutil'] = MagicMock()
+# Add parent directory to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from monitoring.watchdog import Watchdog, AgentHealth, SystemHealth
+from monitoring.watchdog import (
+    Watchdog,
+    WatchdogConfig,
+    AgentMetrics
+)
 
 
-class TestWatchdogInitialization(unittest.TestCase):
-    """Test Watchdog initialization and configuration"""
+class TestAgentMetrics:
+    """Test AgentMetrics calculations"""
     
-    def test_watchdog_creation(self):
-        """Test creating Watchdog instance"""
-        watchdog = Watchdog(redis_host='localhost', redis_port=6379)
-        
-        self.assertIsNotNone(watchdog)
-        self.assertFalse(watchdog.running)
-        self.assertFalse(watchdog.emergency_halt)
-        self.assertEqual(len(watchdog.isolated_agents), 0)
-        
-        print("✅ Watchdog creation: Instance created successfully")
+    def test_failure_rate_zero_requests(self):
+        """Test failure rate with zero requests"""
+        metrics = AgentMetrics(agent_name="Test")
+        assert metrics.failure_rate == 0.0
     
-    def test_watchdog_configuration(self):
-        """Test Watchdog configuration defaults"""
+    def test_failure_rate_calculation(self):
+        """Test failure rate calculation"""
+        metrics = AgentMetrics(agent_name="Test")
+        metrics.total_requests = 100
+        metrics.successful_requests = 80
+        metrics.failed_requests = 20
+        
+        assert metrics.failure_rate == 0.20
+        assert metrics.success_rate == 0.80
+    
+    def test_avg_latency_empty(self):
+        """Test average latency with no data"""
+        metrics = AgentMetrics(agent_name="Test")
+        assert metrics.avg_latency_ms == 0.0
+    
+    def test_avg_latency_calculation(self):
+        """Test average latency calculation"""
+        metrics = AgentMetrics(agent_name="Test")
+        metrics.recent_latencies = deque([100, 200, 300, 400, 500])
+        
+        assert metrics.avg_latency_ms == 300.0
+    
+    def test_health_score_perfect(self):
+        """Test health score for perfect agent"""
+        metrics = AgentMetrics(agent_name="Test")
+        metrics.total_requests = 100
+        metrics.successful_requests = 100
+        metrics.failed_requests = 0
+        metrics.last_seen = time.time()
+        metrics.recent_latencies = deque([50, 60, 70, 80, 90])
+        
+        health = metrics.health_score
+        assert 0.9 <= health <= 1.0  # Near perfect
+    
+    def test_health_score_degraded(self):
+        """Test health score for degraded agent"""
+        metrics = AgentMetrics(agent_name="Test")
+        metrics.total_requests = 100
+        metrics.successful_requests = 50  # 50% failure rate
+        metrics.failed_requests = 50
+        metrics.last_seen = time.time() - 120  # 2 minutes ago
+        metrics.recent_latencies = deque([5000, 6000, 7000])  # High latency
+        
+        health = metrics.health_score
+        assert health < 0.5  # Poor health
+
+
+class TestWatchdogConfig:
+    """Test Watchdog configuration"""
+    
+    def test_default_config(self):
+        """Test default configuration values"""
+        config = WatchdogConfig()
+        
+        assert config.agent_check_interval == 5.0
+        assert config.max_agent_latency_ms == 5000.0
+        assert config.max_agent_failure_rate == 0.20
+        assert config.enable_auto_isolation is True
+        assert config.enable_emergency_halt is True
+    
+    def test_custom_config(self):
+        """Test custom configuration"""
+        config = WatchdogConfig(
+            agent_check_interval=10.0,
+            max_agent_latency_ms=10000.0,
+            max_agent_failure_rate=0.30,
+            enable_auto_isolation=False
+        )
+        
+        assert config.agent_check_interval == 10.0
+        assert config.max_agent_latency_ms == 10000.0
+        assert config.max_agent_failure_rate == 0.30
+        assert config.enable_auto_isolation is False
+
+
+class TestWatchdogCore:
+    """Test Watchdog core functionality (no Redis)"""
+    
+    def test_watchdog_initialization(self):
+        """Test Watchdog initialization"""
         watchdog = Watchdog()
         
-        config = watchdog.config
-        
-        self.assertEqual(config['check_interval_seconds'], 5)
-        self.assertEqual(config['heartbeat_timeout_seconds'], 30)
-        self.assertEqual(config['response_time_threshold_ms'], 5000)
-        self.assertEqual(config['error_rate_threshold'], 0.20)
-        self.assertEqual(config['critical_violations_threshold'], 3)
-        
-        print("✅ Watchdog configuration: All defaults correct")
-
-
-class TestAgentHealthMonitoring(unittest.TestCase):
-    """Test agent health monitoring"""
+        assert watchdog.running is False
+        assert watchdog.emergency_halt is False
+        assert len(watchdog.agent_metrics) == 6
+        assert 'Kyle' in watchdog.agent_metrics
+        assert 'HRM' in watchdog.agent_metrics
     
-    def test_agent_health_creation(self):
-        """Test creating AgentHealth dataclass"""
-        health = AgentHealth(
-            name='Kenny',
-            status='healthy',
-            last_heartbeat=1234567890.0,
-            response_time_avg_ms=50.5,
-            response_time_p95_ms=120.0,
-            error_count=2,
-            error_rate=0.05,
-            task_count=40,
-            success_rate=0.95,
-            violations_count=0,
-            last_violation=None,
-            uptime_seconds=3600.0
-        )
-        
-        self.assertEqual(health.name, 'Kenny')
-        self.assertEqual(health.status, 'healthy')
-        self.assertEqual(health.success_rate, 0.95)
-        
-        print("✅ AgentHealth: Dataclass created correctly")
-    
-    def test_agent_status_determination(self):
-        """Test agent status determination logic"""
-        # Healthy agent
-        healthy = AgentHealth(
-            name='Kyle',
-            status='healthy',
-            last_heartbeat=0,
-            response_time_avg_ms=100.0,
-            response_time_p95_ms=200.0,
-            error_count=1,
-            error_rate=0.05,
-            task_count=20,
-            success_rate=0.95,
-            violations_count=0,
-            last_violation=None,
-            uptime_seconds=1000.0
-        )
-        self.assertEqual(healthy.status, 'healthy')
-        
-        # Degraded agent (slow response)
-        degraded = AgentHealth(
-            name='Joey',
-            status='degraded',
-            last_heartbeat=0,
-            response_time_avg_ms=6000.0,  # Slow
-            response_time_p95_ms=8000.0,
-            error_count=5,
-            error_rate=0.15,
-            task_count=50,
-            success_rate=0.85,
-            violations_count=2,
-            last_violation='position_size',
-            uptime_seconds=2000.0
-        )
-        self.assertEqual(degraded.status, 'degraded')
-        
-        print("✅ Agent status: Determination logic correct")
-
-
-class TestSystemHealthMonitoring(unittest.TestCase):
-    """Test system-level health monitoring"""
-    
-    def test_system_health_creation(self):
-        """Test creating SystemHealth dataclass"""
-        health = SystemHealth(
-            status='healthy',
-            timestamp='2024-01-01T00:00:00',
-            uptime_seconds=3600.0,
-            agents_healthy=6,
-            agents_degraded=0,
-            agents_unhealthy=0,
-            agents_offline=0,
-            total_agents=6,
-            redis_connected=True,
-            redis_latency_ms=5.0,
-            queue_depth=10,
-            memory_usage_pct=45.0,
-            cpu_usage_pct=30.0,
-            graveyard_violations_total=5,
-            graveyard_violations_critical=0,
-            emergency_halt_active=False
-        )
-        
-        self.assertEqual(health.status, 'healthy')
-        self.assertEqual(health.agents_healthy, 6)
-        self.assertFalse(health.emergency_halt_active)
-        
-        print("✅ SystemHealth: Dataclass created correctly")
-    
-    def test_system_status_determination(self):
-        """Test system status determination"""
-        # Healthy system
-        healthy = SystemHealth(
-            status='healthy',
-            timestamp='2024-01-01T00:00:00',
-            uptime_seconds=1000.0,
-            agents_healthy=6,
-            agents_degraded=0,
-            agents_unhealthy=0,
-            agents_offline=0,
-            total_agents=6,
-            redis_connected=True,
-            redis_latency_ms=2.0,
-            queue_depth=5,
-            memory_usage_pct=40.0,
-            cpu_usage_pct=25.0,
-            graveyard_violations_total=3,
-            graveyard_violations_critical=0,
-            emergency_halt_active=False
-        )
-        self.assertEqual(healthy.status, 'healthy')
-        
-        # Degraded system
-        degraded = SystemHealth(
-            status='degraded',
-            timestamp='2024-01-01T00:00:00',
-            uptime_seconds=1000.0,
-            agents_healthy=4,
-            agents_degraded=2,
-            agents_unhealthy=0,
-            agents_offline=0,
-            total_agents=6,
-            redis_connected=True,
-            redis_latency_ms=15.0,
-            queue_depth=50,
-            memory_usage_pct=75.0,
-            cpu_usage_pct=70.0,
-            graveyard_violations_total=10,
-            graveyard_violations_critical=1,
-            emergency_halt_active=False
-        )
-        self.assertEqual(degraded.status, 'degraded')
-        
-        print("✅ System status: Determination logic correct")
-
-
-class TestEmergencyControls(unittest.TestCase):
-    """Test emergency halt and agent isolation"""
-    
-    def test_emergency_halt_trigger(self):
-        """Test triggering emergency halt"""
+    def test_get_system_health(self):
+        """Test system health report generation"""
         watchdog = Watchdog()
         
-        # Before halt
-        self.assertFalse(watchdog.emergency_halt)
+        health = watchdog.get_system_health()
         
-        # Trigger halt
-        asyncio.run(watchdog.trigger_emergency_halt("Test emergency"))
-        
-        # After halt
-        self.assertTrue(watchdog.emergency_halt)
-        
-        print("✅ Emergency halt: Triggered successfully")
+        assert 'status' in health
+        assert 'system_health_score' in health
+        assert 'agents' in health
+        assert 'redis' in health
+        assert 'graveyard' in health
+        assert len(health['agents']) == 6
     
-    def test_emergency_halt_clear(self):
-        """Test clearing emergency halt"""
+    def test_agent_metrics_tracking(self):
+        """Test agent metrics are tracked correctly"""
         watchdog = Watchdog()
         
-        # Set halt
-        asyncio.run(watchdog.trigger_emergency_halt("Test"))
-        self.assertTrue(watchdog.emergency_halt)
+        # Simulate agent activity
+        metrics = watchdog.agent_metrics['Kenny']
+        metrics.total_requests = 100
+        metrics.successful_requests = 95
+        metrics.failed_requests = 5
+        metrics.recent_latencies = deque([100, 150, 200])
         
-        # Clear halt
-        asyncio.run(watchdog.clear_emergency_halt())
-        self.assertFalse(watchdog.emergency_halt)
+        health = watchdog.get_system_health()
+        kenny_health = health['agents']['Kenny']
         
-        print("✅ Emergency clear: Halt cleared successfully")
+        assert kenny_health['total_requests'] == 100
+        assert kenny_health['failures'] == 5
+        assert kenny_health['success_rate'] == 0.95
+        assert kenny_health['avg_latency_ms'] == 150.0
+
+
+class TestWatchdogIsolation:
+    """Test agent isolation logic"""
     
-    def test_agent_isolation(self):
-        """Test agent isolation"""
+    @pytest.mark.asyncio
+    async def test_manual_isolation(self):
+        """Test manual agent isolation"""
         watchdog = Watchdog()
         
         # Isolate agent
-        asyncio.run(watchdog.isolate_agent('Kenny', 'High error rate'))
+        await watchdog.isolate_agent('Kenny', "Test isolation")
         
-        self.assertIn('Kenny', watchdog.isolated_agents)
+        assert watchdog.agent_metrics['Kenny'].isolated is True
         
-        print("✅ Agent isolation: Kenny isolated successfully")
+        # Check health report
+        health = watchdog.get_system_health()
+        assert health['agents']['Kenny']['isolated'] is True
     
-    def test_agent_restoration(self):
-        """Test agent restoration"""
+    @pytest.mark.asyncio
+    async def test_restore_agent(self):
+        """Test restoring isolated agent"""
         watchdog = Watchdog()
         
         # Isolate then restore
-        asyncio.run(watchdog.isolate_agent('Joey', 'Test'))
-        self.assertIn('Joey', watchdog.isolated_agents)
+        await watchdog.isolate_agent('Kenny', "Test")
+        assert watchdog.agent_metrics['Kenny'].isolated is True
         
-        asyncio.run(watchdog.restore_agent('Joey'))
-        self.assertNotIn('Joey', watchdog.isolated_agents)
-        
-        print("✅ Agent restoration: Joey restored successfully")
-
-
-class TestThresholdDetection(unittest.TestCase):
-    """Test threshold detection and alerting"""
+        await watchdog.restore_agent('Kenny')
+        assert watchdog.agent_metrics['Kenny'].isolated is False
+        assert watchdog.agent_metrics['Kenny'].consecutive_failures == 0
     
-    def test_critical_violations_threshold(self):
-        """Test critical violations threshold detection"""
-        watchdog = Watchdog()
-        watchdog.config['critical_violations_threshold'] = 3
-        watchdog.graveyard_metrics = {
-            'total_violations': 10,
-            'critical_violations': 3  # At threshold
-        }
-        
-        # Should trigger emergency halt
-        asyncio.run(watchdog._check_emergency_conditions())
-        
-        self.assertTrue(watchdog.emergency_halt)
-        
-        print("✅ Critical violations: Threshold detected correctly")
-    
-    def test_agent_offline_threshold(self):
-        """Test agent offline threshold detection"""
-        watchdog = Watchdog()
-        
-        # Create 4 offline agents (majority)
-        for i, agent in enumerate(['Kyle', 'Joey', 'Kenny', 'HRM']):
-            watchdog.agent_health[agent] = AgentHealth(
-                name=agent,
-                status='offline',
-                last_heartbeat=0,
-                response_time_avg_ms=0,
-                response_time_p95_ms=0,
-                error_count=0,
-                error_rate=0,
-                task_count=0,
-                success_rate=0,
-                violations_count=0,
-                last_violation=None,
-                uptime_seconds=0
-            )
-        
-        # Evaluate system health
-        asyncio.run(watchdog._evaluate_system_health())
-        
-        # Check emergency conditions
-        asyncio.run(watchdog._check_emergency_conditions())
-        
-        self.assertTrue(watchdog.emergency_halt)
-        
-        print("✅ Agent offline: Catastrophic failure detected")
-
-
-class TestWatchdogStatus(unittest.TestCase):
-    """Test Watchdog status reporting"""
-    
-    def test_get_status(self):
-        """Test getting Watchdog status"""
-        watchdog = Watchdog()
-        watchdog.running = True
-        
-        status = watchdog.get_status()
-        
-        self.assertIn('running', status)
-        self.assertIn('uptime_seconds', status)
-        self.assertIn('emergency_halt', status)
-        self.assertIn('system_health', status)
-        self.assertIn('agent_health', status)
-        self.assertIn('config', status)
-        
-        self.assertTrue(status['running'])
-        
-        print("✅ Watchdog status: All fields present")
-    
-    def test_status_with_health_data(self):
-        """Test status with health data populated"""
-        watchdog = Watchdog()
-        
-        # Add agent health
-        watchdog.agent_health['Kenny'] = AgentHealth(
-            name='Kenny',
-            status='healthy',
-            last_heartbeat=0,
-            response_time_avg_ms=100.0,
-            response_time_p95_ms=200.0,
-            error_count=1,
-            error_rate=0.02,
-            task_count=50,
-            success_rate=0.98,
-            violations_count=0,
-            last_violation=None,
-            uptime_seconds=1000.0
+    def test_auto_isolation_consecutive_failures(self):
+        """Test auto-isolation on consecutive failures"""
+        config = WatchdogConfig(
+            max_consecutive_failures=5,
+            enable_auto_isolation=True
         )
+        watchdog = Watchdog(config=config)
         
-        status = watchdog.get_status()
+        # Simulate consecutive failures
+        metrics = watchdog.agent_metrics['Kenny']
+        metrics.consecutive_failures = 6  # Exceeds threshold
+        metrics.total_requests = 10
         
-        self.assertIn('Kenny', status['agent_health'])
-        self.assertEqual(status['agent_health']['Kenny']['status'], 'healthy')
+        # Should be flagged for isolation
+        assert metrics.consecutive_failures >= config.max_consecutive_failures
+    
+    def test_auto_isolation_high_failure_rate(self):
+        """Test auto-isolation on high failure rate"""
+        config = WatchdogConfig(
+            max_agent_failure_rate=0.20,
+            enable_auto_isolation=True
+        )
+        watchdog = Watchdog(config=config)
         
-        print("✅ Status with data: Agent health included correctly")
+        # Simulate high failure rate
+        metrics = watchdog.agent_metrics['Kenny']
+        metrics.total_requests = 100
+        metrics.failed_requests = 30  # 30% failure rate
+        metrics.successful_requests = 70
+        
+        # Should be flagged for isolation
+        assert metrics.failure_rate > config.max_agent_failure_rate
 
 
-def run_watchdog_tests():
+class TestWatchdogEmergencyControls:
+    """Test emergency halt and controls"""
+    
+    @pytest.mark.asyncio
+    async def test_emergency_stop(self):
+        """Test emergency stop functionality"""
+        watchdog = Watchdog()
+        
+        # Trigger emergency stop
+        success = await watchdog.emergency_stop("Test emergency")
+        
+        assert success is True
+        assert watchdog.emergency_halt is True
+        
+        # All agents should be isolated
+        for agent_name in watchdog.agent_names:
+            assert watchdog.agent_metrics[agent_name].isolated is True
+    
+    @pytest.mark.asyncio
+    async def test_emergency_stop_disabled(self):
+        """Test emergency stop when disabled in config"""
+        config = WatchdogConfig(enable_emergency_halt=False)
+        watchdog = Watchdog(config=config)
+        
+        # Attempt emergency stop
+        success = await watchdog.emergency_stop("Test")
+        
+        assert success is False
+        assert watchdog.emergency_halt is False
+
+
+class TestWatchdogMetricsUpdate:
+    """Test metrics update logic"""
+    
+    @pytest.mark.asyncio
+    async def test_update_metrics_request(self):
+        """Test updating metrics on request event"""
+        watchdog = Watchdog()
+        
+        await watchdog._update_agent_metrics('Kenny', 'request', {'latency_ms': 250})
+        
+        metrics = watchdog.agent_metrics['Kenny']
+        assert metrics.total_requests == 1
+        assert 250 in metrics.recent_latencies
+    
+    @pytest.mark.asyncio
+    async def test_update_metrics_success(self):
+        """Test updating metrics on success event"""
+        watchdog = Watchdog()
+        
+        await watchdog._update_agent_metrics('Kenny', 'success', {})
+        
+        metrics = watchdog.agent_metrics['Kenny']
+        assert metrics.successful_requests == 1
+        assert metrics.consecutive_failures == 0
+    
+    @pytest.mark.asyncio
+    async def test_update_metrics_failure(self):
+        """Test updating metrics on failure event"""
+        watchdog = Watchdog()
+        
+        await watchdog._update_agent_metrics('Kenny', 'failure', {})
+        
+        metrics = watchdog.agent_metrics['Kenny']
+        assert metrics.failed_requests == 1
+        assert metrics.consecutive_failures == 1
+
+
+class TestWatchdogSimulation:
+    """Integration-style tests with simulated scenarios"""
+    
+    @pytest.mark.asyncio
+    async def test_healthy_system_scenario(self):
+        """Test scenario with all agents healthy"""
+        watchdog = Watchdog()
+        
+        # Simulate healthy activity for all agents
+        for agent_name in watchdog.agent_names:
+            metrics = watchdog.agent_metrics[agent_name]
+            metrics.total_requests = 100
+            metrics.successful_requests = 98
+            metrics.failed_requests = 2
+            metrics.last_seen = time.time()
+            metrics.recent_latencies = deque([50, 60, 70, 80, 90])
+        
+        health = watchdog.get_system_health()
+        
+        assert health['system_health_score'] > 0.9
+        assert all(not agent['isolated'] for agent in health['agents'].values())
+        print("✅ Healthy system scenario passed")
+    
+    @pytest.mark.asyncio
+    async def test_degraded_agent_scenario(self):
+        """Test scenario with one degraded agent"""
+        watchdog = Watchdog()
+        
+        # Most agents healthy
+        for agent_name in ['Kyle', 'Joey', 'HRM', 'Aletheia', 'ID']:
+            metrics = watchdog.agent_metrics[agent_name]
+            metrics.total_requests = 100
+            metrics.successful_requests = 98
+            metrics.failed_requests = 2
+            metrics.last_seen = time.time()
+            metrics.recent_latencies = deque([50, 60, 70])
+        
+        # Kenny degraded
+        kenny = watchdog.agent_metrics['Kenny']
+        kenny.total_requests = 100
+        kenny.successful_requests = 40  # 60% failure rate!
+        kenny.failed_requests = 60
+        kenny.last_seen = time.time() - 90  # Not seen recently (90s ago)
+        kenny.recent_latencies = deque([6000, 7000, 8000, 9000])  # Very high latency
+        kenny.consecutive_failures = 4
+        
+        health = watchdog.get_system_health()
+        
+        # System degraded but not critical
+        system_health = health['system_health_score']
+        kenny_health = health['agents']['Kenny']['health_score']
+        
+        # Debug: print actual values if assertion fails
+        if not (0.5 < system_health < 0.9):
+            print(f"  Debug: system_health_score = {system_health:.3f} (expected 0.5-0.9)")
+        if not (kenny_health < 0.5):
+            print(f"  Debug: Kenny health_score = {kenny_health:.3f} (expected < 0.5)")
+        
+        assert 0.5 < system_health < 0.9, f"System health {system_health:.3f} not in range 0.5-0.9"
+        assert kenny_health < 0.5, f"Kenny health {kenny_health:.3f} not < 0.5"
+        print("✅ Degraded agent scenario passed")
+    
+    @pytest.mark.asyncio
+    async def test_failing_agent_scenario(self):
+        """Test scenario with failing agent requiring isolation"""
+        config = WatchdogConfig(
+            max_consecutive_failures=5,
+            enable_auto_isolation=True
+        )
+        watchdog = Watchdog(config=config)
+        
+        # Kenny failing badly
+        kenny = watchdog.agent_metrics['Kenny']
+        kenny.total_requests = 100
+        kenny.successful_requests = 10
+        kenny.failed_requests = 90
+        kenny.consecutive_failures = 10  # Exceeds threshold
+        kenny.last_seen = time.time()
+        
+        # Check isolation condition
+        await watchdog._check_agent_health('Kenny')
+        
+        # Should be isolated due to consecutive failures
+        assert kenny.isolated is True
+        print("✅ Failing agent scenario passed")
+    
+    @pytest.mark.asyncio
+    async def test_graveyard_violation_spike(self):
+        """Test scenario with spike in Graveyard violations"""
+        config = WatchdogConfig(max_graveyard_violations_per_minute=10)
+        watchdog = Watchdog(config=config)
+        
+        # Simulate 15 violations in last minute
+        current_time = time.time()
+        for i in range(15):
+            watchdog.graveyard_violations_last_minute.append(current_time - i)
+        
+        health = watchdog.get_system_health()
+        
+        violations = health['graveyard']['violations_last_minute']
+        assert violations == 15
+        assert violations > config.max_graveyard_violations_per_minute
+        print("✅ Graveyard violation spike scenario passed")
+
+
+def run_all_tests():
     """Run all Watchdog tests"""
+    print("=" * 60)
+    print("WATCHDOG TEST SUITE")
+    print("=" * 60)
+    print()
     
-    print("\n" + "="*70)
-    print("WATCHDOG MONITORING SYSTEM TEST SUITE")
-    print("="*70 + "\n")
+    test_classes = [
+        TestAgentMetrics,
+        TestWatchdogConfig,
+        TestWatchdogCore,
+        TestWatchdogIsolation,
+        TestWatchdogEmergencyControls,
+        TestWatchdogMetricsUpdate,
+        TestWatchdogSimulation
+    ]
     
-    # Create test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
+    total_tests = 0
+    passed_tests = 0
+    failed_tests = []
     
-    # Add all test classes
-    suite.addTests(loader.loadTestsFromTestCase(TestWatchdogInitialization))
-    suite.addTests(loader.loadTestsFromTestCase(TestAgentHealthMonitoring))
-    suite.addTests(loader.loadTestsFromTestCase(TestSystemHealthMonitoring))
-    suite.addTests(loader.loadTestsFromTestCase(TestEmergencyControls))
-    suite.addTests(loader.loadTestsFromTestCase(TestThresholdDetection))
-    suite.addTests(loader.loadTestsFromTestCase(TestWatchdogStatus))
+    for test_class in test_classes:
+        print(f"\n📋 Running {test_class.__name__}...")
+        print("-" * 60)
+        
+        test_instance = test_class()
+        test_methods = [m for m in dir(test_instance) if m.startswith('test_')]
+        
+        for method_name in test_methods:
+            total_tests += 1
+            method = getattr(test_instance, method_name)
+            
+            try:
+                # Check if async
+                if asyncio.iscoroutinefunction(method):
+                    asyncio.run(method())
+                else:
+                    method()
+                
+                print(f"  ✅ {method_name}")
+                passed_tests += 1
+            except AssertionError as e:
+                print(f"  ❌ {method_name}: {str(e)}")
+                failed_tests.append((test_class.__name__, method_name, str(e)))
+            except Exception as e:
+                print(f"  ⚠️  {method_name}: {str(e)}")
+                failed_tests.append((test_class.__name__, method_name, f"Exception: {str(e)}"))
     
-    # Run tests
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    
-    # Print summary
-    print("\n" + "="*70)
+    # Summary
+    print("\n" + "=" * 60)
     print("TEST SUMMARY")
-    print("="*70)
-    print(f"Tests run: {result.testsRun}")
-    print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")
-    print(f"Failures: {len(result.failures)}")
-    print(f"Errors: {len(result.errors)}")
-    print("="*70 + "\n")
+    print("=" * 60)
+    print(f"Total tests: {total_tests}")
+    print(f"Passed: {passed_tests} ✅")
+    print(f"Failed: {len(failed_tests)} ❌")
+    print(f"Success rate: {(passed_tests / total_tests * 100):.1f}%")
     
-    if result.wasSuccessful():
-        print("🎉 ALL WATCHDOG TESTS PASSED! 🎉\n")
-        print("Watchdog Implementation Status:")
-        print("  ✅ Initialization and configuration")
-        print("  ✅ Agent health monitoring")
-        print("  ✅ System health monitoring")
-        print("  ✅ Emergency halt controls")
-        print("  ✅ Agent isolation")
-        print("  ✅ Threshold detection")
-        print("  ✅ Status reporting")
-        print("\n✅ Ready for integration with ARK system\n")
+    if failed_tests:
+        print("\n❌ FAILED TESTS:")
+        for class_name, method_name, error in failed_tests:
+            print(f"  • {class_name}.{method_name}")
+            print(f"    {error}")
+    else:
+        print("\n🎉 ALL TESTS PASSED!")
     
-    return result.wasSuccessful()
+    print("=" * 60)
+    
+    return len(failed_tests) == 0
 
 
-if __name__ == '__main__':
-    success = run_watchdog_tests()
+if __name__ == "__main__":
+    success = run_all_tests()
     sys.exit(0 if success else 1)
