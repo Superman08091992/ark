@@ -2,7 +2,6 @@
 node_modules/
 .env.local
 logs/
-memory/
 .DS_Store
 core.log
 gui.log
