@@ -7,6 +7,8 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from agents.base_agent import BaseAgent
+from reasoning.id_reasoner import IDReasoner
+from reasoning.intra_agent_reasoner import ReasoningDepth
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,13 @@ class IDAgent(BaseAgent):
             'evolve_reflection', 'learn_from_interactions', 'synthesize_identity',
             'adapt_personality', 'mirror_user', 'project_future_self'
         ]
+        
+        # Initialize ID-specific hierarchical reasoner
+        self.intra_reasoner = IDReasoner(
+            default_depth=ReasoningDepth.DEEP,
+            enable_tree_of_selfs=True,
+            max_branches_per_level=5
+        )
         
         # Initialize ID's evolutionary state
         memory = self.get_memory()
@@ -46,7 +55,8 @@ class IDAgent(BaseAgent):
                 },
                 'collaborative_inputs': [],  # From other agents
                 'evolution_history': [],
-                'future_projections': []
+                'future_projections': [],
+                'reasoning_mode': 'DEEP'
             }
             self.save_memory(memory)
     
