@@ -42,6 +42,9 @@ python-dotenv==1.0.0
 # Cryptography
 PyNaCl>=1.5.0
 
+# Federation
+websockets>=12.0
+
 # Testing
 pytest==8.3.5
 pytest-asyncio==1.3.0

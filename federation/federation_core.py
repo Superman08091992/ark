@@ -206,23 +206,53 @@ class FederationNode:
     
     async def _run_discovery_service(self):
         """Run peer discovery service"""
+        from federation.discovery import DiscoveryService
+        
         logger.info("Discovery service started")
         
-        while self.running:
-            # Broadcast presence on LAN
-            # (Simplified - real implementation would use UDP multicast)
-            await asyncio.sleep(30)  # Discovery every 30s
+        # Create discovery service
+        discovery = DiscoveryService(
+            node_manifest=self.get_manifest().to_dict(),
+            on_peer_discovered=self._on_peer_discovered
+        )
+        
+        try:
+            await discovery.start()
+        except Exception as e:
+            logger.error(f"Discovery service error: {e}")
     
     async def _run_sync_service(self):
         """Run knowledge synchronization service"""
+        if not CRYPTO_AVAILABLE:
+            logger.warning("Sync service requires cryptography - skipping")
+            return
+        
+        from federation.sync_protocol import SyncProtocol
+        
         logger.info("Sync service started")
         
-        while self.running:
-            # Process sync queue
-            if self.sync_queue:
-                await self._process_sync_queue()
-            
-            await asyncio.sleep(5)  # Sync check every 5s
+        # Build verify keys dict for trusted peers
+        verify_keys = {}
+        for peer_id, peer in self.peers.items():
+            if peer.trust_tier == TrustTier.CORE and ark_crypto.peer_key_exists(peer_id):
+                try:
+                    verify_keys[peer_id] = ark_crypto.load_peer_key(peer_id)
+                except Exception as e:
+                    logger.error(f"Failed to load key for {peer_id}: {e}")
+        
+        # Create sync protocol
+        self.sync_protocol = SyncProtocol(
+            node_id=self.node_id,
+            private_key=self.private_key,
+            verify_keys=verify_keys,
+            on_packet_received=self._on_packet_received
+        )
+        
+        # Start sync server
+        try:
+            await self.sync_protocol.start_server(port=8104)
+        except Exception as e:
+            logger.error(f"Sync service error: {e}")
     
     async def _run_heartbeat_service(self):
         """Run peer heartbeat monitoring"""
@@ -357,9 +387,54 @@ class FederationNode:
         
         logger.debug(f"📦 Added knowledge packet: {packet.packet_id}")
     
+    async def _on_peer_discovered(self, peer_manifest: Dict):
+        """Callback when peer discovered via UDP multicast"""
+        peer_id = peer_manifest['peer_id']
+        
+        # Check if already registered
+        if peer_id in self.peers:
+            logger.debug(f"Peer already registered: {peer_id}")
+            return
+        
+        # Auto-register with UNKNOWN trust tier
+        manifest = PeerManifest.from_dict(peer_manifest)
+        manifest.trust_tier = TrustTier.UNKNOWN
+        
+        self.peers[peer_id] = manifest
+        logger.info(f"✨ Auto-registered discovered peer: {manifest.peer_name} (UNKNOWN tier)")
+        logger.info(f"   Use 'ark-lattice peers trust-tier {peer_id} core' to trust")
+    
+    async def _on_packet_received(self, peer_id: str, packet: Dict):
+        """Callback when verified packet received from peer"""
+        packet_id = packet.get('packet_id', 'unknown')
+        packet_type = packet.get('packet_type', 'unknown')
+        
+        logger.info(f"📦 Received {packet_type} from {peer_id}: {packet_id[:16]}...")
+        
+        # Store in local knowledge if not duplicate
+        if packet_id not in self.local_knowledge:
+            # Create KnowledgePacket
+            from federation.federation_core import KnowledgePacket
+            
+            kp = KnowledgePacket(
+                packet_id=packet['packet_id'],
+                source_peer=packet['source_peer'],
+                packet_type=packet['packet_type'],
+                data=packet['data'],
+                timestamp=packet['timestamp'],
+                hash=packet['hash'],
+                dependencies=packet.get('dependencies', [])
+            )
+            
+            self.local_knowledge[packet_id] = kp
+            
+            # Propagate to other peers (except sender)
+            if hasattr(self, 'sync_protocol'):
+                await self.sync_protocol.broadcast_packet(packet, exclude_peers={peer_id})
+    
     def get_stats(self) -> Dict:
         """Get federation statistics"""
-        return {
+        stats = {
             'node_id': self.node_id,
             'node_name': self.node_name,
             'peers': {
@@ -375,6 +450,12 @@ class FederationNode:
             },
             'running': self.running
         }
+        
+        # Add sync stats if available
+        if hasattr(self, 'sync_protocol'):
+            stats['sync'] = self.sync_protocol.get_stats()
+        
+        return stats
 
 
 # Global federation node
