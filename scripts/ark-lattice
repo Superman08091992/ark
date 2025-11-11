@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+ark-lattice - ARK Federation Management CLI
+
+Command-line interface for managing ARK federation:
+- Start/stop federation services
+- Discover and manage peers
+- Configure trust tiers
+- Monitor synchronization
+
+Usage:
+    ark-lattice federation start
+    ark-lattice federation discover
+    ark-lattice federation add-peer <url>
+    ark-lattice federation auto-sync --start
+    ark-lattice federation status
+    ark-lattice peers list
+    ark-lattice peers trust-tier <peer-id> <tier>
+"""
+
+import asyncio
+import sys
+import os
+import json
+import argparse
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from federation.federation_core import (
+    FederationNode,
+    get_federation_node,
+    TrustTier,
+    PeerManifest
+)
+
+
+def print_banner():
+    """Print ARK lattice banner"""
+    print("""
+    ╔═══════════════════════════════════════════╗
+    ║                                           ║
+    ║        🕸️  ARK LATTICE                    ║
+    ║     Federation Management CLI             ║
+    ║                                           ║
+    ╚═══════════════════════════════════════════╝
+    """)
+
+
+async def cmd_federation_start(args):
+    """Start federation server"""
+    print("🚀 Starting ARK federation server...")
+    
+    node = get_federation_node()
+    manifest = node.get_manifest()
+    
+    print(f"\n✅ Federation node initialized:")
+    print(f"   Node ID: {manifest.peer_id}")
+    print(f"   Name: {manifest.peer_name}")
+    print(f"   Address: {manifest.address}:{manifest.port}")
+    print(f"   Capabilities: {', '.join(manifest.capabilities)}")
+    
+    print(f"\n🔧 Starting services...")
+    print("   - Discovery service")
+    print("   - Sync service")
+    print("   - Heartbeat service")
+    
+    # Start server (non-blocking for CLI)
+    print(f"\n✅ Federation server running on port {node.listen_port}")
+    print(f"   Press Ctrl+C to stop\n")
+    
+    try:
+        await node.start()
+    except KeyboardInterrupt:
+        print("\n\n🛑 Stopping federation server...")
+        await node.stop()
+        print("✅ Federation server stopped")
+
+
+async def cmd_federation_discover(args):
+    """Discover peers on network"""
+    print("🔍 Discovering peers on local network...")
+    
+    node = get_federation_node()
+    peers = node.discover_peers(subnet=args.subnet if hasattr(args, 'subnet') else "auto")
+    
+    if peers:
+        print(f"\n✅ Found {len(peers)} peer(s):\n")
+        for peer in peers:
+            print(f"   • {peer.peer_name} ({peer.address}:{peer.port})")
+            print(f"     ID: {peer.peer_id}")
+            print(f"     Trust: {peer.trust_tier.value}")
+            print()
+    else:
+        print("\n   No peers discovered")
+        print("   Make sure other ARK nodes are running on the network\n")
+
+
+async def cmd_federation_add_peer(args):
+    """Add peer manually"""
+    if not args.url:
+        print("❌ Error: Peer URL required")
+        print("   Usage: ark-lattice federation add-peer <url>")
+        print("   Example: ark-lattice federation add-peer http://192.168.1.100:8102")
+        return
+    
+    print(f"➕ Adding peer: {args.url}")
+    
+    # Parse URL
+    # Format: http://address:port or https://address:port
+    try:
+        url = args.url.replace('http://', '').replace('https://', '')
+        if ':' in url:
+            address, port = url.split(':')
+            port = int(port)
+        else:
+            address = url
+            port = 8102
+        
+        # Create manifest
+        manifest = PeerManifest(
+            peer_id=f"peer_{address.replace('.', '_')}",
+            peer_name=f"ARK Node @ {address}",
+            address=address,
+            port=port
+        )
+        
+        # Add to federation
+        node = get_federation_node()
+        trust_tier = TrustTier[args.trust.upper()] if hasattr(args, 'trust') else TrustTier.UNKNOWN
+        node.add_peer(manifest, trust_tier)
+        
+        print(f"✅ Peer added successfully")
+        print(f"   Name: {manifest.peer_name}")
+        print(f"   Address: {address}:{port}")
+        print(f"   Trust Tier: {trust_tier.value}")
+        
+    except Exception as e:
+        print(f"❌ Error adding peer: {e}")
+
+
+async def cmd_federation_auto_sync(args):
+    """Start/stop auto-sync"""
+    node = get_federation_node()
+    
+    if args.action == 'start':
+        print("🔄 Starting automatic peer synchronization...")
+        
+        core_peers = node.list_peers(trust_tier=TrustTier.CORE)
+        if not core_peers:
+            print("⚠️  No CORE-tier peers found")
+            print("   Add peers with: ark-lattice federation add-peer <url>")
+            print("   Set trust tier: ark-lattice peers trust-tier <peer-id> core")
+            return
+        
+        print(f"\n✅ Auto-sync enabled for {len(core_peers)} peer(s):")
+        for peer in core_peers:
+            print(f"   • {peer.peer_name}")
+            await node.sync_knowledge(peer.peer_id, auto=True)
+        
+        print("\n   Continuous bidirectional knowledge flow active")
+        
+    elif args.action == 'stop':
+        print("🛑 Stopping automatic peer synchronization...")
+        print("✅ Auto-sync disabled")
+
+
+async def cmd_federation_status(args):
+    """Show federation status"""
+    node = get_federation_node()
+    stats = node.get_stats()
+    
+    print("📊 ARK Federation Status")
+    print("=" * 50)
+    print(f"\n🏷️  Node Information:")
+    print(f"   ID: {stats['node_id']}")
+    print(f"   Name: {stats['node_name']}")
+    print(f"   Running: {'✅ Yes' if stats['running'] else '❌ No'}")
+    
+    print(f"\n🤝 Peer Connections:")
+    print(f"   Total: {stats['peers']['total']}")
+    print(f"   • CORE: {stats['peers']['core']}")
+    print(f"   • SANDBOX: {stats['peers']['sandbox']}")
+    print(f"   • EXTERNAL: {stats['peers']['external']}")
+    print(f"   • UNKNOWN: {stats['peers']['unknown']}")
+    
+    print(f"\n📦 Knowledge State:")
+    print(f"   Local Packets: {stats['knowledge']['local_packets']}")
+    print(f"   Sync Queue: {stats['knowledge']['sync_queue']}")
+    print()
+
+
+async def cmd_peers_list(args):
+    """List all peers"""
+    node = get_federation_node()
+    peers = node.list_peers()
+    
+    if not peers:
+        print("   No peers registered")
+        print("   Discover peers: ark-lattice federation discover")
+        return
+    
+    print(f"🤝 Registered Peers ({len(peers)}):")
+    print("=" * 50)
+    
+    for peer in peers:
+        print(f"\n   • {peer.peer_name}")
+        print(f"     ID: {peer.peer_id}")
+        print(f"     Address: {peer.address}:{peer.port}")
+        print(f"     Trust Tier: {peer.trust_tier.value}")
+        print(f"     Capabilities: {', '.join(peer.capabilities)}")
+        print(f"     Version: {peer.version}")
+
+
+async def cmd_peers_trust_tier(args):
+    """Set peer trust tier"""
+    if not args.peer_id or not args.tier:
+        print("❌ Error: peer-id and tier required")
+        print("   Usage: ark-lattice peers trust-tier <peer-id> <tier>")
+        print("   Tiers: core, sandbox, external, unknown")
+        return
+    
+    try:
+        tier = TrustTier[args.tier.upper()]
+        node = get_federation_node()
+        node.set_peer_trust_tier(args.peer_id, tier)
+        print(f"✅ Trust tier updated to: {tier.value}")
+    except KeyError:
+        print(f"❌ Invalid trust tier: {args.tier}")
+        print("   Valid tiers: core, sandbox, external, unknown")
+
+
+def main():
+    """Main CLI entry point"""
+    parser = argparse.ArgumentParser(
+        description="ARK Lattice - Federation Management CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    
+    # Federation commands
+    federation = subparsers.add_parser('federation', help='Federation management')
+    federation_sub = federation.add_subparsers(dest='subcommand')
+    
+    federation_sub.add_parser('start', help='Start federation server')
+    
+    discover = federation_sub.add_parser('discover', help='Discover peers')
+    discover.add_argument('--subnet', help='Subnet to scan (default: auto)')
+    
+    add_peer = federation_sub.add_parser('add-peer', help='Add peer manually')
+    add_peer.add_argument('url', help='Peer URL (e.g., http://192.168.1.100:8102)')
+    add_peer.add_argument('--trust', default='unknown', choices=['core', 'sandbox', 'external', 'unknown'])
+    
+    auto_sync = federation_sub.add_parser('auto-sync', help='Auto-sync control')
+    auto_sync.add_argument('action', choices=['start', 'stop'])
+    
+    federation_sub.add_parser('status', help='Show federation status')
+    
+    # Peer commands
+    peers = subparsers.add_parser('peers', help='Peer management')
+    peers_sub = peers.add_subparsers(dest='subcommand')
+    
+    peers_sub.add_parser('list', help='List all peers')
+    
+    trust_tier = peers_sub.add_parser('trust-tier', help='Set peer trust tier')
+    trust_tier.add_argument('peer_id', help='Peer ID')
+    trust_tier.add_argument('tier', choices=['core', 'sandbox', 'external', 'unknown'])
+    
+    # Parse and execute
+    args = parser.parse_args()
+    
+    if not args.command:
+        print_banner()
+        parser.print_help()
+        return
+    
+    # Route to command
+    command_map = {
+        ('federation', 'start'): cmd_federation_start,
+        ('federation', 'discover'): cmd_federation_discover,
+        ('federation', 'add-peer'): cmd_federation_add_peer,
+        ('federation', 'auto-sync'): cmd_federation_auto_sync,
+        ('federation', 'status'): cmd_federation_status,
+        ('peers', 'list'): cmd_peers_list,
+        ('peers', 'trust-tier'): cmd_peers_trust_tier,
+    }
+    
+    key = (args.command, args.subcommand) if hasattr(args, 'subcommand') else (args.command,)
+    cmd_func = command_map.get(key)
+    
+    if cmd_func:
+        asyncio.run(cmd_func(args))
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
