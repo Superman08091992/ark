@@ -36,6 +36,12 @@ from federation.federation_core import (
     PeerManifest
 )
 
+try:
+    from federation import crypto as ark_crypto
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    CRYPTO_AVAILABLE = False
+
 
 def print_banner():
     """Print ARK lattice banner"""
@@ -232,6 +238,175 @@ async def cmd_peers_trust_tier(args):
         print("   Valid tiers: core, sandbox, external, unknown")
 
 
+# =====================================================
+# Crypto Commands
+# =====================================================
+
+async def cmd_crypto_keygen(args):
+    """Generate new keypair"""
+    if not CRYPTO_AVAILABLE:
+        print("❌ PyNaCl not installed")
+        print("   Install: pip install pynacl")
+        return
+    
+    node_id = args.node_id if hasattr(args, 'node_id') and args.node_id else "ark-primary"
+    
+    if ark_crypto.keypair_exists(node_id):
+        print(f"⚠️  Keypair already exists for: {node_id}")
+        if not (hasattr(args, 'force') and args.force):
+            print("   Use --force to regenerate")
+            return
+        print("   Regenerating...")
+        ark_crypto.delete_keypair(node_id)
+    
+    print(f"🔐 Generating Ed25519 keypair for: {node_id}")
+    priv, pub = ark_crypto.generate_keypair(node_id)
+    
+    pub_hex = ark_crypto.export_public_key(node_id)
+    fingerprint = pub_hex[:16] + "..."
+    
+    print(f"✅ Keypair generated successfully")
+    print(f"\n📋 Public Key (share with peers):")
+    print(f"   {pub_hex}")
+    print(f"\n🔑 Fingerprint: {fingerprint}")
+    print(f"\n💾 Keys saved to: keys/{node_id}_*.key")
+
+
+async def cmd_crypto_list_keys(args):
+    """List all keys"""
+    if not CRYPTO_AVAILABLE:
+        print("❌ PyNaCl not installed")
+        return
+    
+    keys = ark_crypto.list_keys()
+    
+    print("🔐 ARK Federation Keys")
+    print("=" * 50)
+    
+    if keys['local']:
+        print(f"\n📍 Local Keypairs ({len(keys['local'])}):")
+        for node_id in keys['local']:
+            fingerprint = ark_crypto.get_key_fingerprint(node_id, is_peer=False)
+            print(f"   • {node_id}")
+            print(f"     Fingerprint: {fingerprint}")
+    else:
+        print("\n   No local keypairs found")
+        print("   Generate: ark-lattice crypto keygen")
+    
+    if keys['peers']:
+        print(f"\n🤝 Trusted Peer Keys ({len(keys['peers'])}):")
+        for node_id in keys['peers']:
+            fingerprint = ark_crypto.get_key_fingerprint(node_id, is_peer=True)
+            print(f"   • {node_id}")
+            print(f"     Fingerprint: {fingerprint}")
+    else:
+        print("\n   No peer keys imported")
+        print("   Import: ark-lattice crypto import-key <peer-id> <public-key>")
+
+
+async def cmd_crypto_export_key(args):
+    """Export public key"""
+    if not CRYPTO_AVAILABLE:
+        print("❌ PyNaCl not installed")
+        return
+    
+    node_id = args.node_id if hasattr(args, 'node_id') and args.node_id else "ark-primary"
+    
+    try:
+        pub_hex = ark_crypto.export_public_key(node_id)
+        print(f"📤 Public Key for {node_id}:")
+        print(f"\n{pub_hex}")
+        print(f"\n💡 Share this with peers to enable signature verification")
+    except FileNotFoundError:
+        print(f"❌ No keypair found for: {node_id}")
+        print("   Generate: ark-lattice crypto keygen")
+
+
+async def cmd_crypto_import_key(args):
+    """Import peer public key"""
+    if not CRYPTO_AVAILABLE:
+        print("❌ PyNaCl not installed")
+        return
+    
+    if not args.peer_id or not args.public_key:
+        print("❌ Error: peer-id and public-key required")
+        print("   Usage: ark-lattice crypto import-key <peer-id> <public-key-hex>")
+        return
+    
+    try:
+        ark_crypto.import_peer_key(args.peer_id, args.public_key)
+        fingerprint = ark_crypto.get_key_fingerprint(args.peer_id, is_peer=True)
+        print(f"✅ Imported public key for peer: {args.peer_id}")
+        print(f"   Fingerprint: {fingerprint}")
+        print(f"\n⚠️  Remember to set trust tier:")
+        print(f"   ark-lattice peers trust-tier {args.peer_id} core")
+    except ValueError as e:
+        print(f"❌ Invalid public key: {e}")
+
+
+async def cmd_crypto_sign_test(args):
+    """Test signing and verification"""
+    if not CRYPTO_AVAILABLE:
+        print("❌ PyNaCl not installed")
+        return
+    
+    node_id = args.node_id if hasattr(args, 'node_id') and args.node_id else "ark-primary"
+    
+    print(f"🧪 Testing signing with: {node_id}")
+    
+    try:
+        priv, pub = ark_crypto.load_keypair(node_id)
+    except FileNotFoundError:
+        print(f"❌ No keypair found for: {node_id}")
+        print("   Generate: ark-lattice crypto keygen")
+        return
+    
+    # Create test packet
+    test_packet = {
+        "origin_id": node_id,
+        "type": "TestPacket",
+        "data": {"message": "Hello, ARK Federation!"}
+    }
+    
+    print(f"\n📦 Test Packet:")
+    print(f"   {test_packet}")
+    
+    # Sign packet
+    envelope = ark_crypto.sign_packet(priv, test_packet)
+    print(f"\n✍️  Signed packet:")
+    print(f"   Signature: {envelope['signature'][:32]}...")
+    print(f"   Timestamp: {envelope['timestamp']}")
+    
+    # Verify with correct key
+    valid = ark_crypto.verify_packet(envelope, pub)
+    if valid:
+        print(f"\n✅ Signature verified successfully!")
+    else:
+        print(f"\n❌ Signature verification failed!")
+    
+    print(f"\n💡 This signature can be verified by any peer with your public key")
+
+
+async def cmd_crypto_self_test(args):
+    """Run crypto self-test"""
+    if not CRYPTO_AVAILABLE:
+        print("❌ PyNaCl not installed")
+        print("   Install: pip install pynacl")
+        return
+    
+    print("🧪 Running cryptographic self-test...")
+    print()
+    
+    success = ark_crypto.test_sign_verify()
+    
+    if success:
+        print("\n✅ All cryptographic tests passed!")
+        print("   Ed25519 signing and verification working correctly")
+    else:
+        print("\n❌ Crypto self-test failed!")
+        print("   Check logs for details")
+
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -269,6 +444,28 @@ def main():
     trust_tier.add_argument('peer_id', help='Peer ID')
     trust_tier.add_argument('tier', choices=['core', 'sandbox', 'external', 'unknown'])
     
+    # Crypto commands
+    crypto = subparsers.add_parser('crypto', help='Cryptographic key management')
+    crypto_sub = crypto.add_subparsers(dest='subcommand')
+    
+    keygen = crypto_sub.add_parser('keygen', help='Generate Ed25519 keypair')
+    keygen.add_argument('--node-id', help='Node identifier (default: ark-primary)')
+    keygen.add_argument('--force', action='store_true', help='Force regenerate if exists')
+    
+    crypto_sub.add_parser('list-keys', help='List all keys')
+    
+    export_key = crypto_sub.add_parser('export-key', help='Export public key')
+    export_key.add_argument('--node-id', help='Node identifier (default: ark-primary)')
+    
+    import_key = crypto_sub.add_parser('import-key', help='Import peer public key')
+    import_key.add_argument('peer_id', help='Peer node identifier')
+    import_key.add_argument('public_key', help='Hex-encoded public key from peer')
+    
+    sign_test = crypto_sub.add_parser('sign-test', help='Test packet signing')
+    sign_test.add_argument('--node-id', help='Node identifier (default: ark-primary)')
+    
+    crypto_sub.add_parser('self-test', help='Run crypto self-test')
+    
     # Parse and execute
     args = parser.parse_args()
     
@@ -286,6 +483,12 @@ def main():
         ('federation', 'status'): cmd_federation_status,
         ('peers', 'list'): cmd_peers_list,
         ('peers', 'trust-tier'): cmd_peers_trust_tier,
+        ('crypto', 'keygen'): cmd_crypto_keygen,
+        ('crypto', 'list-keys'): cmd_crypto_list_keys,
+        ('crypto', 'export-key'): cmd_crypto_export_key,
+        ('crypto', 'import-key'): cmd_crypto_import_key,
+        ('crypto', 'sign-test'): cmd_crypto_sign_test,
+        ('crypto', 'self-test'): cmd_crypto_self_test,
     }
     
     key = (args.command, args.subcommand) if hasattr(args, 'subcommand') else (args.command,)

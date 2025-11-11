@@ -26,12 +26,11 @@ import hashlib
 import uuid
 
 try:
-    from cryptography.hazmat.primitives.asymmetric import ed25519
-    from cryptography.hazmat.primitives import serialization
+    from federation import crypto as ark_crypto
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
-    logging.warning("Cryptography not available - peer signing disabled")
+    logging.warning("PyNaCl not available - peer signing disabled")
 
 logger = logging.getLogger(__name__)
 
@@ -139,13 +138,14 @@ class FederationNode:
         self.local_knowledge: Dict[str, KnowledgePacket] = {}
         self.sync_queue: List[KnowledgePacket] = []
         
-        # Cryptography
+        # Cryptography - Ed25519 keypair
         if CRYPTO_AVAILABLE:
-            self.private_key = ed25519.Ed25519PrivateKey.generate()
-            self.public_key = self.private_key.public_key()
+            self.private_key, self.public_key = ark_crypto.generate_keypair(self.node_id)
+            logger.info(f"🔐 Loaded Ed25519 keypair for {self.node_id}")
         else:
             self.private_key = None
             self.public_key = None
+            logger.warning("⚠️  No cryptography - signatures disabled")
         
         # Server state
         self.running = False
@@ -155,11 +155,8 @@ class FederationNode:
     def get_manifest(self) -> PeerManifest:
         """Get this node's manifest"""
         public_key_str = None
-        if self.public_key:
-            public_key_str = self.public_key.public_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PublicFormat.Raw
-            ).hex()
+        if CRYPTO_AVAILABLE and self.public_key:
+            public_key_str = ark_crypto.export_public_key(self.node_id)
         
         return PeerManifest(
             peer_id=self.node_id,
@@ -171,7 +168,8 @@ class FederationNode:
                 "hierarchical_reasoning",
                 "agent_orchestration",
                 "memory_sync",
-                "knowledge_federation"
+                "knowledge_federation",
+                "signed_packets" if CRYPTO_AVAILABLE else "unsigned"
             ],
             trust_tier=TrustTier.CORE  # Self is always core
         )
