@@ -7,6 +7,8 @@ import json
 from datetime import datetime
 from typing import Dict, Any, List
 from agents.base_agent import BaseAgent
+from reasoning.aletheia_reasoner import AletheiaReasoner
+from reasoning.intra_agent_reasoner import ReasoningDepth
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,13 @@ class AletheiaAgent(BaseAgent):
             'synthesize_wisdom', 'contemplate_purpose', 'mirror_truth'
         ]
         
+        # Initialize Aletheia-specific hierarchical reasoner
+        self.intra_reasoner = AletheiaReasoner(
+            default_depth=ReasoningDepth.DEEP,
+            enable_tree_of_selfs=True,
+            max_branches_per_level=5
+        )
+        
         # Initialize Aletheia's philosophical framework
         memory = self.get_memory()
         if not memory:
@@ -32,7 +41,8 @@ class AletheiaAgent(BaseAgent):
                 'ethical_insights': [],
                 'meaning_explorations': [],
                 'truth_revelations': [],
-                'contemplation_depth': 0.7
+                'contemplation_depth': 0.7,
+                'reasoning_mode': 'DEEP'
             }
             self.save_memory(memory)
     
