@@ -50,6 +50,22 @@ CREATE TABLE IF NOT EXISTS reflection_reports (
     created_at INTEGER DEFAULT (strftime('%s', 'now'))
 );
 
+-- Reflections - nightly "sleep mode" insights
+CREATE TABLE IF NOT EXISTS reflections (
+    reflection_id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    chunk_id TEXT,
+    tier TEXT,
+    summary_hash TEXT,
+    insight TEXT NOT NULL,
+    confidence REAL DEFAULT 0.0,
+    confidence_delta REAL DEFAULT 0.0,
+    reflection_type TEXT,
+    signature TEXT,
+    metadata TEXT,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
+
 -- ID behavioral state - agent identity model
 CREATE TABLE IF NOT EXISTS id_state (
     state_id TEXT PRIMARY KEY,
@@ -89,6 +105,10 @@ CREATE INDEX IF NOT EXISTS idx_chunk_consolidated ON memory_chunks(consolidated)
 
 CREATE INDEX IF NOT EXISTS idx_reflection_agent ON reflection_reports(agent, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_reflection_ts ON reflection_reports(ts DESC);
+
+CREATE INDEX IF NOT EXISTS idx_reflections_timestamp ON reflections(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_reflections_chunk ON reflections(chunk_id);
+CREATE INDEX IF NOT EXISTS idx_reflections_type ON reflections(reflection_type);
 
 CREATE INDEX IF NOT EXISTS idx_quarantine_ts ON quarantine(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_quarantine_peer ON quarantine(peer_id);

@@ -1,0 +1,67 @@
+# ARK Reflection System Policies
+# Configuration for nightly "sleep mode" self-analysis
+
+reflection:
+  # Operating mode
+  mode: "sleep"                      # Nightly consolidation mode
+  
+  # Scheduling
+  schedule: "0 0 * * *"              # Every midnight (system local time)
+  timezone: "UTC"                     # Timezone for scheduling
+  
+  # Processing limits
+  max_chunks_per_cycle: 50           # Reflect on most recent 50 reasoning traces
+  max_reflection_time_seconds: 300   # Maximum 5 minutes per cycle
+  batch_size: 10                      # Process in batches of 10 chunks
+  
+  # Quality thresholds
+  min_confidence_delta: 0.05         # Skip trivial reflections
+  min_confidence_threshold: 0.3      # Ignore low-confidence traces
+  max_confidence_threshold: 0.95     # Already high-quality, skip
+  
+  # Security and validation
+  quarantine_violations: true        # Isolate reflections with ethical breaches
+  require_hrm_signature: true        # Only accept reflections validated by HRM
+  trust_tier_weighting: true         # Higher weight to CORE-tier peers
+  
+  # Trust tier weights (multipliers for confidence scores)
+  trust_weights:
+    core: 1.0                         # Full trust
+    sandbox: 0.8                      # Reduced trust
+    external: 0.5                     # Minimal trust
+    unknown: 0.3                      # Very low trust
+  
+  # Data retention
+  reflection_retention_days: 90      # Old reflections archived after 90 days
+  archive_path: "data/reflection_archive"
+  
+  # Logging and audit
+  audit_log_path: "logs/reflection_audit.log"
+  debug_mode: false                   # Enable detailed logging
+  
+  # Reflection types
+  reflection_types:
+    - "pattern_recognition"           # Identify recurring patterns
+    - "error_analysis"                # Learn from mistakes
+    - "confidence_calibration"        # Adjust confidence scores
+    - "ethical_alignment"             # Verify HRM compliance
+    - "performance_optimization"      # Identify improvement areas
+  
+  # Integration
+  enable_id_updates: true            # Send insights to ID system
+  enable_memory_updates: true        # Update memory chunks with insights
+  notify_on_completion: true         # Send notification after reflection cycle
+
+# Aletheia-specific configuration (review agent)
+aletheia:
+  enabled: true                       # Enable Aletheia review
+  review_threshold: 0.7              # Only review high-confidence traces
+  critique_depth: 3                   # Depth of analysis
+  cross_agent_critique: true         # Compare with other agents
+  
+# Dream synthesis (optional - future enhancement)
+dream_synthesis:
+  enabled: false                      # Disabled by default
+  frequency: "weekly"                 # Weekly dream synthesis
+  scenario_count: 5                   # Generate 5 hypothetical scenarios
+  validation_required: true          # Validate with HRM before storage
