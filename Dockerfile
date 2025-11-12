@@ -1,84 +1,48 @@
-# ARK Multi-Agent Trading System - Production Container
-# Base: Arch Linux (rolling release)
-# Exposes: 8000 (API), 6379 (Redis), 9090 (Metrics)
+# ARK Sovereign Intelligence - Multi-arch Docker Image
+# Supports: linux/amd64, linux/arm64, linux/arm/v7
 
-FROM archlinux:latest
+FROM python:3.12-slim AS base
 
-LABEL maintainer="ARK System"
-LABEL description="ARK Unified Multi-Agent Trading System with Immutable Ethics"
-LABEL version="1.0.0"
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
-RUN pacman -Syu --noconfirm && \
-    pacman -S --noconfirm \
-        python \
-        python-pip \
-        redis \
-        git \
-        base-devel \
-        sudo \
-        curl \
-        vim && \
-    pacman -Scc --noconfirm
-
-# Create app user
-RUN useradd -m -s /bin/bash ark && \
-    echo "ark ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    sqlite3 \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
-WORKDIR /home/ark/webapp
+WORKDIR /app
 
-# Copy application code
-COPY --chown=ark:ark . .
+# Copy requirements first (for layer caching)
+COPY requirements.txt requirements.prod.txt ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir \
-    redis \
-    aiohttp \
-    asyncio \
-    pytest \
-    pytest-asyncio \
-    requests || \
-    echo "Some packages may already be installed"
+RUN pip install --upgrade pip && \
+    pip install -r requirements.prod.txt && \
+    pip install gunicorn uvicorn[standard]
 
-# Create required directories
-RUN mkdir -p /var/lib/ark /var/log/ark /var/backups/ark /var/run/ark && \
-    chown -R ark:ark /var/lib/ark /var/log/ark /var/backups/ark /var/run/ark
+# Copy application code
+COPY . .
 
-# Set Graveyard permissions (immutable ethics)
-RUN chmod 444 graveyard/ethics.py || echo "Graveyard file not found"
-
-# Configure Redis
-RUN mkdir -p /etc/redis && \
-    chown -R ark:ark /etc/redis
-
-# Copy Redis configuration
-RUN cat > /etc/redis/redis.conf << 'EOF'
-# Redis configuration for ARK
-bind 0.0.0.0
-port 6379
-daemonize no
-supervised systemd
-pidfile /var/run/ark/redis.pid
-loglevel notice
-logfile /var/log/ark/redis.log
-dir /var/lib/ark
-maxmemory 2gb
-maxmemory-policy allkeys-lru
-save 900 1
-save 300 10
-save 60 10000
-EOF
-
-# Switch to app user
-USER ark
+# Create necessary directories
+RUN mkdir -p data logs keys agent_logs && \
+    chmod 755 data logs keys agent_logs
 
 # Expose ports
-EXPOSE 8000 6379 9090
+EXPOSE 8000 8101 8104
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:9090/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8101/health || exit 1
 
-# Start command
-CMD ["bash", "-c", "redis-server /etc/redis/redis.conf --daemonize yes && sleep 2 && python3 -m monitoring.metrics_server & sleep 2 && tail -f /var/log/ark/*.log"]
+# Default command (can be overridden in docker-compose)
+CMD ["python3", "reasoning_api.py"]
