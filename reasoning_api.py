@@ -52,6 +52,14 @@ from reasoning.memory_sync import (
     get_memory_sync
 )
 
+# Import dashboard WebSocket components
+from dashboard_websockets import (
+    websocket_federation,
+    websocket_memory,
+    start_dashboard_tasks,
+    stop_dashboard_tasks
+)
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -117,11 +125,21 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Failed to initialize agents: {e}")
         raise
     
+    # Start dashboard broadcast tasks
+    try:
+        await start_dashboard_tasks()
+        logger.info("✅ Dashboard WebSocket tasks started")
+    except Exception as e:
+        logger.warning(f"⚠️  Dashboard tasks initialization failed: {e}")
+    
     logger.info("🎉 ARK Reasoning API Server ready!")
     
     yield
     
     logger.info("🛑 Shutting down ARK Reasoning API Server...")
+    
+    # Stop dashboard tasks
+    await stop_dashboard_tasks()
     
     # Cleanup memory sync
     if memory_sync:
@@ -538,6 +556,25 @@ async def websocket_reasoning(websocket: WebSocket, agent_name: str):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         await websocket.close()
+
+
+# Dashboard WebSocket endpoints
+@app.websocket("/ws/federation")
+async def federation_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for Federation Mesh dashboard
+    Real-time P2P network topology and sync traffic
+    """
+    await websocket_federation(websocket)
+
+
+@app.websocket("/ws/memory")
+async def memory_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for Memory Engine dashboard
+    Real-time memory consolidation metrics and events
+    """
+    await websocket_memory(websocket)
 
 
 # Statistics endpoint

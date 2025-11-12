@@ -21,10 +21,13 @@ class BaseAgent(ABC):
     def __init__(self, name: str, essence: str):
         self.name = name
         self.essence = essence
-        self.db_path = "/app/data/ark.db"
-        self.files_dir = "/app/files"
+        # Use environment variable or current working directory
+        base_path = os.getenv('ARK_BASE_PATH', os.getcwd())
+        self.db_path = os.path.join(base_path, "data", "ark.db")
+        self.files_dir = os.path.join(base_path, "files")
         
-        # Ensure files directory exists
+        # Ensure directories exist
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         os.makedirs(self.files_dir, exist_ok=True)
         
         logger.info(f"🧠 {self.name} ({self.essence}) initialized")

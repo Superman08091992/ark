@@ -23,11 +23,15 @@ from typing import Any, Dict, List, Optional, Callable
 from pathlib import Path
 
 try:
-    import aioredis
+    import redis.asyncio as aioredis
     REDIS_AVAILABLE = True
 except ImportError:
-    REDIS_AVAILABLE = False
-    logging.warning("Redis not available - pub/sub features disabled")
+    try:
+        import aioredis
+        REDIS_AVAILABLE = True
+    except (ImportError, TypeError):
+        REDIS_AVAILABLE = False
+        logging.warning("Redis not available - pub/sub features disabled")
 
 from reasoning.reasoning_engine import ReasoningResult, StageResult
 
