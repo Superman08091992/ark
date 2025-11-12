@@ -1,0 +1,16 @@
+import pytest
+{% if imports %}
+{% for import_line in imports %}{{ import_line }}
+{% endfor %}
+{% endif %}
+
+def test_{{ function_name }}_{{ test_case }}():
+    """{{ test_description }}"""
+    # Arrange
+    {{ arrange | indent(4) }}
+    
+    # Act
+    {{ act | indent(4) }}
+    
+    # Assert
+    {{ assert_statement | indent(4) }}

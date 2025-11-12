@@ -1,0 +1,13 @@
+def {{ function_name }}({% for param in parameters %}{{ param.name }}: {{ param.type }}{% if param.default %} = {{ param.default }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}){% if return_type %} -> {{ return_type }}{% endif %}:
+    """
+    {{ docstring }}
+    {% if parameters %}
+    
+    Args:
+    {% for param in parameters %}    {{ param.name }}: {{ param.description }}
+    {% endfor %}{% endif %}{% if return_type %}
+    
+    Returns:
+        {{ return_description }}
+    {% endif %}"""
+    {{ body | indent(4) }}
