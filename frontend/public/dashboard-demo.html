@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARK Sovereign Intelligence Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #14141e;
+            --bg-tertiary: #1a1a28;
+            --cyan-primary: #00e0ff;
+            --cyan-glow: rgba(0, 224, 255, 0.3);
+            --gold-primary: #ffce47;
+            --gold-glow: rgba(255, 206, 71, 0.3);
+            --obsidian: #0a0a0f;
+            --glass-bg: rgba(20, 20, 30, 0.7);
+            --success: #00ff88;
+            --warning: #ffce47;
+            --danger: #ff4444;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: #e0e0e0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.15;
+            background: 
+                radial-gradient(circle at 20% 50%, var(--cyan-glow) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, var(--gold-glow) 0%, transparent 50%),
+                radial-gradient(circle at 40% 10%, rgba(0, 224, 255, 0.2) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite;
+        }
+
+        @keyframes bgShift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-10px, 20px) scale(1.1); }
+            66% { transform: translate(20px, -10px) scale(0.9); }
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .main-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--cyan-primary) 0%, var(--gold-primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px var(--cyan-glow);
+            margin-bottom: 10px;
+            letter-spacing: 4px;
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+
+        .subtitle {
+            font-size: 1em;
+            color: var(--gold-primary);
+            letter-spacing: 2px;
+            opacity: 0.9;
+        }
+
+        .backend-info {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 224, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 30px auto;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .ws-url {
+            color: var(--cyan-primary);
+            font-size: 0.9em;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel Styles */
+        .panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 224, 255, 0.3);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--cyan-primary), var(--gold-primary));
+            opacity: 0.5;
+        }
+
+        .panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0, 224, 255, 0.3);
+            border-color: var(--cyan-primary);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 224, 255, 0.2);
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--cyan-primary);
+            font-size: 1.4em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+            position: relative;
+        }
+
+        .status-indicator::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 currentColor;
+                opacity: 1;
+            }
+            50% { 
+                box-shadow: 0 0 0 10px currentColor;
+                opacity: 0;
+            }
+        }
+
+        .status-connected {
+            background: var(--success);
+            color: var(--success);
+        }
+
+        .status-disconnected {
+            background: var(--danger);
+            color: var(--danger);
+        }
+
+        .status-connecting {
+            background: var(--warning);
+            color: var(--warning);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .timestamp {
+            font-size: 0.75em;
+            color: #888;
+            font-weight: 300;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: rgba(0, 224, 255, 0.03);
+            border: 1px solid rgba(0, 224, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyan-primary), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .metric-card:hover {
+            background: rgba(0, 224, 255, 0.08);
+            border-color: var(--cyan-primary);
+            transform: scale(1.02);
+        }
+
+        .metric-label {
+            color: #888;
+            font-size: 0.75em;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            color: var(--cyan-primary);
+            font-size: 2em;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px var(--cyan-glow);
+            transition: all 0.3s ease;
+        }
+
+        .metric-value.updating {
+            animation: valueUpdate 0.5s ease;
+        }
+
+        @keyframes valueUpdate {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); color: var(--gold-primary); }
+        }
+
+        /* Peers List */
+        .peers-section {
+            margin-top: 20px;
+        }
+
+        .section-title {
+            color: var(--gold-primary);
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .peer-item {
+            background: rgba(255, 206, 71, 0.05);
+            border-left: 3px solid var(--gold-primary);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .peer-item:hover {
+            background: rgba(255, 206, 71, 0.1);
+            transform: translateX(5px);
+        }
+
+        .peer-item.trust-core {
+            border-left-color: var(--cyan-primary);
+            background: rgba(0, 224, 255, 0.05);
+        }
+
+        .peer-item.trust-trusted {
+            border-left-color: var(--warning);
+        }
+
+        .peer-item.trust-verified {
+            border-left-color: var(--danger);
+            background: rgba(255, 68, 68, 0.05);
+        }
+
+        .peer-name {
+            color: var(--gold-primary);
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .peer-status {
+            font-size: 0.75em;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .peer-latency {
+            background: rgba(0, 224, 255, 0.2);
+            color: var(--cyan-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        /* Logs */
+        .logs-container {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .logs-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .logs-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .logs-container::-webkit-scrollbar-thumb {
+            background: var(--cyan-primary);
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin: 4px 0;
+            font-size: 0.85em;
+            border-left: 2px solid var(--cyan-primary);
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+            animation: logFadeIn 0.3s ease;
+            transition: all 0.2s ease;
+        }
+
+        @keyframes logFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .log-entry:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .log-timestamp {
+            color: #666;
+            margin-right: 10px;
+            font-weight: 300;
+        }
+
+        .log-message {
+            color: #ccc;
+        }
+
+        /* Error Messages */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            animation: errorShake 0.5s ease;
+        }
+
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-box {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 224, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-box:hover {
+            border-color: var(--cyan-primary);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 224, 255, 0.2);
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: var(--cyan-primary);
+            font-size: 2em;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Progress Bars */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyan-primary), var(--gold-primary));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px var(--cyan-glow);
+        }
+
+        /* Loading Animation */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: loadingDots 1.5s infinite;
+        }
+
+        @keyframes loadingDots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-title {
+                font-size: 2em;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .panel {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="main-title">⚡ ARK SOVEREIGN INTELLIGENCE ⚡</h1>
+            <div class="subtitle">REAL-TIME NEURAL MESH MONITORING</div>
+        </div>
+
+        <div class="backend-info">
+            <div style="margin-bottom: 5px; color: #888; font-size: 0.8em;">WebSocket Server</div>
+            <div class="ws-url" id="backend-url">Initializing...</div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-box">
+                <div class="stat-label">Total Peers</div>
+                <div class="stat-value" id="stat-peers">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Network Health</div>
+                <div class="stat-value" id="stat-health">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Consolidation</div>
+                <div class="stat-value" id="stat-consolidation">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Efficiency</div>
+                <div class="stat-value" id="stat-efficiency">--</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Federation Mesh Dashboard -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        🌐 FEDERATION MESH
+                        <span class="status-indicator" id="fed-status"></span>
+                    </div>
+                    <div class="timestamp" id="fed-timestamp">--:--:--</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Network Health</div>
+                        <div class="metric-value" id="fed-health">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="fed-health-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Data Integrity</div>
+                        <div class="metric-value" id="fed-integrity">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="fed-integrity-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Active Peers</div>
+                        <div class="metric-value" id="fed-peer-count">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Latency</div>
+                        <div class="metric-value" id="fed-latency">--</div>
+                    </div>
+                </div>
+
+                <div class="peers-section">
+                    <div class="section-title">🔗 Connected Peers</div>
+                    <div id="peers-container">
+                        <div class="loading">Loading peer data</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory Engine Dashboard -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        🧠 MEMORY ENGINE
+                        <span class="status-indicator" id="mem-status"></span>
+                    </div>
+                    <div class="timestamp" id="mem-timestamp">--:--:--</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Ingestion Rate</div>
+                        <div class="metric-value" id="mem-ingestion">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Consolidation</div>
+                        <div class="metric-value" id="mem-consolidation">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Dedup Efficiency</div>
+                        <div class="metric-value" id="mem-dedup">--</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="mem-dedup-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Quarantine</div>
+                        <div class="metric-value" id="mem-quarantine">--</div>
+                    </div>
+                </div>
+
+                <div class="peers-section">
+                    <div class="section-title">📝 Memory Events</div>
+                    <div class="logs-container" id="logs-container">
+                        <div class="loading">Loading memory events</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-container"></div>
+    </div>
+
+    <script>
+        // Determine WebSocket URL
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        let wsHost = host;
+        if (host.includes('4173')) {
+            wsHost = host.replace('4173', '8101');
+        }
+
+        const fedWsUrl = `${protocol}//${wsHost}/ws/federation`;
+        const memWsUrl = `${protocol}//${wsHost}/ws/memory`;
+
+        document.getElementById('backend-url').textContent = `${protocol}//${wsHost}`;
+
+        let fedWs = null;
+        let memWs = null;
+
+        // Federation WebSocket
+        function connectFederation() {
+            const statusEl = document.getElementById('fed-status');
+            statusEl.className = 'status-indicator status-connecting';
+
+            fedWs = new WebSocket(fedWsUrl);
+
+            fedWs.onopen = () => {
+                console.log('✅ Federation WebSocket connected');
+                statusEl.className = 'status-indicator status-connected';
+            };
+
+            fedWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    updateFederationDashboard(data);
+                } catch (e) {
+                    console.error('Error parsing federation data:', e);
+                }
+            };
+
+            fedWs.onerror = (error) => {
+                console.error('Federation WebSocket error:', error);
+                statusEl.className = 'status-indicator status-disconnected';
+            };
+
+            fedWs.onclose = () => {
+                console.log('Federation WebSocket closed, reconnecting...');
+                statusEl.className = 'status-indicator status-disconnected';
+                setTimeout(connectFederation, 3000);
+            };
+        }
+
+        // Memory WebSocket
+        function connectMemory() {
+            const statusEl = document.getElementById('mem-status');
+            statusEl.className = 'status-indicator status-connecting';
+
+            memWs = new WebSocket(memWsUrl);
+
+            memWs.onopen = () => {
+                console.log('✅ Memory WebSocket connected');
+                statusEl.className = 'status-indicator status-connected';
+            };
+
+            memWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    updateMemoryDashboard(data);
+                } catch (e) {
+                    console.error('Error parsing memory data:', e);
+                }
+            };
+
+            memWs.onerror = (error) => {
+                console.error('Memory WebSocket error:', error);
+                statusEl.className = 'status-indicator status-disconnected';
+            };
+
+            memWs.onclose = () => {
+                console.log('Memory WebSocket closed, reconnecting...');
+                statusEl.className = 'status-indicator status-disconnected';
+                setTimeout(connectMemory, 3000);
+            };
+        }
+
+        function updateValue(elementId, value) {
+            const el = document.getElementById(elementId);
+            if (el.textContent !== value) {
+                el.classList.add('updating');
+                el.textContent = value;
+                setTimeout(() => el.classList.remove('updating'), 500);
+            }
+        }
+
+        function updateFederationDashboard(data) {
+            const health = data.network_health?.toFixed(1) || 0;
+            const integrity = data.data_integrity?.toFixed(1) || 0;
+            const peerCount = data.total_peers || 0;
+            
+            updateValue('fed-health', `${health}%`);
+            updateValue('fed-integrity', `${integrity}%`);
+            updateValue('fed-peer-count', peerCount);
+            
+            // Update progress bars
+            document.getElementById('fed-health-bar').style.width = `${health}%`;
+            document.getElementById('fed-integrity-bar').style.width = `${integrity}%`;
+            
+            // Calculate average latency
+            let avgLatency = 0;
+            if (data.peers && data.peers.length > 0) {
+                const latencies = data.peers.filter(p => p.status === 'active').map(p => p.latency);
+                avgLatency = latencies.length > 0 ? (latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
+            }
+            updateValue('fed-latency', `${avgLatency.toFixed(1)}ms`);
+            
+            // Update stats bar
+            updateValue('stat-peers', peerCount);
+            updateValue('stat-health', `${health}%`);
+            
+            document.getElementById('fed-timestamp').textContent = new Date().toLocaleTimeString();
+
+            // Update peers list
+            const peersContainer = document.getElementById('peers-container');
+            if (data.peers && data.peers.length > 0) {
+                peersContainer.innerHTML = data.peers.map(peer => `
+                    <div class="peer-item trust-${peer.trust_tier}">
+                        <div>
+                            <div class="peer-name">${peer.name || peer.id}</div>
+                            <div class="peer-status">
+                                <span style="color: ${peer.trust_tier === 'core' ? 'var(--cyan-primary)' : peer.trust_tier === 'trusted' ? 'var(--warning)' : 'var(--danger)'}">
+                                    ${peer.trust_tier.toUpperCase()}
+                                </span>
+                                • ${peer.status}
+                            </div>
+                        </div>
+                        <div class="peer-latency">${peer.latency.toFixed(1)}ms</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function updateMemoryDashboard(data) {
+            const ingestion = data.ingestion_rate?.toFixed(1) || 0;
+            const consolidation = data.consolidation_rate?.toFixed(1) || 0;
+            const dedup = data.dedup_rate?.toFixed(1) || 0;
+            const quarantine = data.quarantine_count || 0;
+            
+            updateValue('mem-ingestion', `${ingestion}/s`);
+            updateValue('mem-consolidation', `${consolidation}/s`);
+            updateValue('mem-dedup', `${dedup}%`);
+            updateValue('mem-quarantine', quarantine);
+            
+            // Update progress bar
+            document.getElementById('mem-dedup-bar').style.width = `${dedup}%`;
+            
+            // Update stats bar
+            updateValue('stat-consolidation', `${consolidation}/s`);
+            updateValue('stat-efficiency', `${dedup}%`);
+            
+            document.getElementById('mem-timestamp').textContent = new Date().toLocaleTimeString();
+
+            // Update logs
+            const logsContainer = document.getElementById('logs-container');
+            if (data.logs && data.logs.length > 0) {
+                logsContainer.innerHTML = data.logs.slice(0, 15).map(log => `
+                    <div class="log-entry">
+                        <span class="log-timestamp">${new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span class="log-message">${log.message}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Initialize connections
+        connectFederation();
+        connectMemory();
+    </script>
+</body>
+</html>

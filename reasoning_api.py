@@ -18,6 +18,7 @@ Architecture:
 import asyncio
 import json
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -58,6 +59,12 @@ from dashboard_websockets import (
     websocket_memory,
     start_dashboard_tasks,
     stop_dashboard_tasks
+)
+
+# Import dashboard data sources
+from dashboard_data_sources import (
+    init_data_sources,
+    cleanup_data_sources
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -125,6 +132,14 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Failed to initialize agents: {e}")
         raise
     
+    # Initialize production data sources
+    try:
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        await init_data_sources(redis_url)
+        logger.info("✅ Production data sources initialized")
+    except Exception as e:
+        logger.warning(f"⚠️  Data sources initialization failed (will use mock data): {e}")
+    
     # Start dashboard broadcast tasks
     try:
         await start_dashboard_tasks()
@@ -140,6 +155,9 @@ async def lifespan(app: FastAPI):
     
     # Stop dashboard tasks
     await stop_dashboard_tasks()
+    
+    # Cleanup data sources
+    await cleanup_data_sources()
     
     # Cleanup memory sync
     if memory_sync:

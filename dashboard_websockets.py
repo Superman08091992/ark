@@ -29,6 +29,14 @@ from pathlib import Path
 from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+# Import production data sources
+from dashboard_data_sources import (
+    get_federation_source,
+    get_memory_source,
+    FederationDataSource,
+    MemoryDataSource
+)
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -189,17 +197,60 @@ class FederationState:
             ),
         ]
     
-    def update_metrics(self):
-        """Update network metrics with simulated changes"""
-        # Update health metrics
+    async def update_metrics(self):
+        """Update network metrics from production data sources or simulate"""
+        fed_source = get_federation_source()
+        
+        if fed_source and fed_source._connected:
+            # Use production data
+            try:
+                # Get real peers from Redis
+                real_peers = await fed_source.get_peers()
+                if real_peers:
+                    # Convert to PeerInfo format
+                    self.peers = [
+                        PeerInfo(
+                            id=p['id'],
+                            name=p.get('hostname', p['id']),
+                            trust_tier=p.get('trust_tier', 'verified'),
+                            status='active' if p.get('status') == 'online' else 'idle',
+                            latency=p.get('latency', 0),
+                            data_shared=random.randint(200, 1500) * 1024  # Estimate
+                        )
+                        for p in real_peers
+                    ]
+                
+                # Get real sync traffic
+                real_sync = await fed_source.get_sync_traffic()
+                if real_sync:
+                    self.sync_traffic = [
+                        SyncEvent(
+                            timestamp=s['timestamp'],
+                            peer=s.get('source', 'unknown'),
+                            action=s.get('event_type', 'sync'),
+                            status='complete' if s.get('success') else 'error',
+                            bytes=s.get('bytes', 0)
+                        )
+                        for s in real_sync
+                    ]
+                
+                # Get real network metrics
+                metrics = await fed_source.get_network_metrics(real_peers)
+                self.network_health = metrics['network_health']
+                self.data_integrity = metrics['data_integrity']
+                
+                logger.debug(f"Updated federation with production data: {len(self.peers)} peers")
+                return
+            except Exception as e:
+                logger.warning(f"Error fetching production federation data, falling back to mock: {e}")
+        
+        # Fallback to mock data simulation
         self.network_health = max(85, min(100, self.network_health + random.uniform(-1.5, 1.5)))
         self.data_integrity = max(95, min(100, self.data_integrity + random.uniform(-0.25, 0.25)))
         
-        # Update peer latencies
         for peer in self.peers:
             peer.latency = max(10, peer.latency + random.uniform(-10, 10))
         
-        # Randomly generate sync events
         if random.random() < 0.3:
             peer = random.choice(self.peers)
             actions = ['memory_sync', 'reflection_sync', 'identity_sync', 'knowledge_sync']
@@ -211,7 +262,6 @@ class FederationState:
                 bytes=random.randint(500, 3000)
             )
             self.sync_traffic.append(event)
-            # Keep only last 50 events
             self.sync_traffic = self.sync_traffic[-50:]
     
     def to_dict(self) -> dict:
@@ -277,38 +327,74 @@ class MemoryState:
             ),
         ]
     
-    def update_metrics(self):
-        """Update memory metrics with simulated changes"""
-        from datetime import timedelta
+    async def update_metrics(self):
+        """Update memory metrics from production data sources or simulate"""
+        mem_source = get_memory_source()
         
-        # Update rates
+        if mem_source:
+            # Use production data
+            try:
+                # Get real consolidation rates
+                rates = await mem_source.get_consolidation_rates()
+                if rates['ingestion_rate'] > 0 or rates['consolidation_rate'] > 0:
+                    self.ingestion_rate = rates['ingestion_rate']
+                    self.consolidation_rate = rates['consolidation_rate']
+                
+                # Get real deduplication efficiency
+                dedup = await mem_source.get_deduplication_efficiency()
+                if dedup > 0:
+                    self.dedup_rate = dedup
+                
+                # Get real quarantine count
+                qcount = await mem_source.get_quarantine_count()
+                self.quarantine_count = qcount
+                
+                # Get real trust distribution
+                trust_dist = await mem_source.get_trust_distribution()
+                if sum(trust_dist.values()) > 0:
+                    self.trust_distribution = trust_dist
+                
+                # Get real confidence deltas
+                deltas = await mem_source.get_confidence_deltas(50)
+                if deltas and any(d != 0.0 for d in deltas):
+                    self.confidence_deltas = deltas
+                
+                # Get real logs
+                real_logs = await mem_source.get_recent_logs(20)
+                if real_logs:
+                    self.logs = [
+                        MemoryLog(
+                            timestamp=log['timestamp'],
+                            message=log['message']
+                        )
+                        for log in real_logs
+                    ]
+                
+                logger.debug("Updated memory engine with production data")
+                return
+            except Exception as e:
+                logger.warning(f"Error fetching production memory data, falling back to mock: {e}")
+        
+        # Fallback to mock data simulation
         self.ingestion_rate = max(0, self.ingestion_rate + random.uniform(-1, 1))
         self.consolidation_rate = max(0, self.consolidation_rate + random.uniform(-0.75, 0.75))
-        
-        # Update dedup rate
         self.dedup_rate = max(85, min(99, self.dedup_rate + random.uniform(-0.25, 0.25)))
         
-        # Update quarantine count
         if random.random() < 0.1:
             self.quarantine_count = max(0, self.quarantine_count + random.choice([-1, 0, 1]))
         
-        # Add new confidence delta occasionally
         if random.random() < 0.3:
             new_delta = random.uniform(-0.3, 0.3)
             self.confidence_deltas.append(new_delta)
-            self.confidence_deltas = self.confidence_deltas[-50:]  # Keep last 50
+            self.confidence_deltas = self.confidence_deltas[-50:]
         
-        # Update trust distribution occasionally
         if random.random() < 0.2:
             self.trust_distribution['core'] += random.choice([-1, 0, 0, 1])
             self.trust_distribution['sandbox'] += random.choice([-1, 0, 1])
             self.trust_distribution['external'] += random.choice([0, 0, 1])
-            
-            # Ensure non-negative
             for key in self.trust_distribution:
                 self.trust_distribution[key] = max(0, self.trust_distribution[key])
         
-        # Add new log entry occasionally
         if random.random() < 0.2:
             messages = [
                 'Consolidated memory batch',
@@ -325,7 +411,7 @@ class MemoryState:
                 message=random.choice(messages)
             )
             self.logs.append(new_log)
-            self.logs = self.logs[-20:]  # Keep last 20
+            self.logs = self.logs[-20:]
     
     def to_dict(self) -> dict:
         """Convert state to dictionary for JSON serialization"""
@@ -356,8 +442,8 @@ async def federation_broadcast_task():
         try:
             # Only update if there are connected clients
             if manager.has_connections('federation'):
-                # Update metrics
-                federation_state.update_metrics()
+                # Update metrics (now async for production data)
+                await federation_state.update_metrics()
                 
                 # Broadcast to all connected clients
                 await manager.broadcast(federation_state.to_dict(), 'federation')
@@ -377,8 +463,8 @@ async def memory_broadcast_task():
         try:
             # Only update if there are connected clients
             if manager.has_connections('memory'):
-                # Update metrics
-                memory_state.update_metrics()
+                # Update metrics (now async for production data)
+                await memory_state.update_metrics()
                 
                 # Broadcast to all connected clients
                 await manager.broadcast(memory_state.to_dict(), 'memory')
