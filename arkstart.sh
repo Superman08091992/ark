@@ -155,6 +155,39 @@ health_check() {
     fi
 }
 
+# Pre-flight checks (REQ_INFRA_02, REQ_INFRA_03)
+preflight_checks() {
+    print_info "Running pre-flight checks..."
+    
+    # Port availability check
+    if command -v python3 &> /dev/null; then
+        if [ -f "$ARK_BASE_PATH/shared/port_checker.py" ]; then
+            if ! python3 "$ARK_BASE_PATH/shared/port_checker.py" --preflight --quiet; then
+                print_error "Port conflicts detected. Run: python3 shared/port_checker.py --preflight"
+                exit 1
+            fi
+            print_success "All ports available"
+        fi
+    fi
+    
+    # Acquire system lock
+    if [ -f "$ARK_BASE_PATH/shared/lockfile.py" ]; then
+        if ! python3 "$ARK_BASE_PATH/shared/lockfile.py" --acquire --component system; then
+            print_error "Another ARK instance is running. Use --force to terminate or run ./arkstop.sh"
+            exit 1
+        fi
+    fi
+}
+
+# Cleanup on exit
+cleanup() {
+    if [ -f "$ARK_BASE_PATH/shared/lockfile.py" ]; then
+        python3 "$ARK_BASE_PATH/shared/lockfile.py" --release --component system 2>/dev/null
+    fi
+}
+
+trap cleanup EXIT
+
 # Main startup sequence
 main() {
     print_header
@@ -163,6 +196,9 @@ main() {
     
     # Create logs directory
     mkdir -p "$ARK_BASE_PATH/logs"
+    
+    # Pre-flight checks (locking, ports)
+    preflight_checks
     
     # Check environment
     check_venv
