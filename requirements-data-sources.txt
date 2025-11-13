@@ -1,0 +1,117 @@
+# ARK Trading Intelligence - Data Sources Requirements
+# Install with: pip install -r requirements-data-sources.txt
+
+# ============================================================================
+# CORE DEPENDENCIES (Required)
+# ============================================================================
+
+# Async HTTP client for API calls
+aiohttp>=3.9.0
+
+# Data manipulation (used by yfinance)
+pandas>=2.0.0
+numpy>=1.24.0
+
+# ============================================================================
+# FREE DATA SOURCES (No API key required)
+# ============================================================================
+
+# Yahoo Finance - FREE, no API key needed!
+# Provides: quotes, historical data, fundamentals, news
+yfinance>=0.2.32
+
+# ============================================================================
+# PAID/FREEMIUM DATA SOURCES (API key required)
+# ============================================================================
+
+# Alpaca Markets - FREE paper trading account available
+# Provides: real-time quotes, historical bars, news
+# Sign up: https://alpaca.markets/
+alpaca-py>=0.16.0
+
+# Polygon.io - FREE tier available (delayed data)
+# Provides: comprehensive market data, options, forex
+# Sign up: https://polygon.io/
+# polygon-api-client>=1.12.0  # Uncomment when API key available
+
+# Alpha Vantage - FREE tier (5 calls/min, 500/day)
+# Provides: technical indicators, fundamentals, forex
+# Sign up: https://www.alphavantage.co/
+# alpha-vantage>=2.3.1  # Uncomment when API key available
+
+# Finnhub - FREE tier (60 calls/minute)
+# Provides: news, sentiment, earnings calendars
+# Sign up: https://finnhub.io/
+# finnhub-python>=2.4.19  # Uncomment when API key available
+
+# ============================================================================
+# TECHNICAL ANALYSIS (Optional but recommended)
+# ============================================================================
+
+# Technical indicators library
+ta>=0.11.0
+
+# Alternative TA library
+# pandas-ta>=0.3.14b
+
+# ============================================================================
+# ADDITIONAL UTILITIES
+# ============================================================================
+
+# Timezone handling
+pytz>=2023.3
+
+# Date parsing
+python-dateutil>=2.8.2
+
+# YAML parsing (for config files)
+PyYAML>=6.0
+
+# ============================================================================
+# DEVELOPMENT/TESTING (Optional)
+# ============================================================================
+
+# Testing
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+
+# Mocking API responses
+# responses>=0.23.0
+
+# ============================================================================
+# ENVIRONMENT VARIABLE MANAGEMENT
+# ============================================================================
+
+# .env file support
+python-dotenv>=1.0.0
+
+# ============================================================================
+# NOTES
+# ============================================================================
+
+# 1. yfinance is completely FREE and requires no API key
+#    - Great for getting started immediately
+#    - 15-20 minute delayed quotes
+#    - Historical data, fundamentals, news all FREE
+#
+# 2. Alpaca provides FREE paper trading accounts
+#    - Real-time data for paper trading
+#    - No credit card required for paper account
+#    - Sign up at: https://alpaca.markets/
+#
+# 3. All other providers have free tiers:
+#    - Polygon.io: 5 calls/minute (delayed data)
+#    - Alpha Vantage: 5 calls/minute, 500/day
+#    - Finnhub: 60 calls/minute
+#
+# 4. Set API keys in .env file:
+#    ALPACA_API_KEY=your_key_here
+#    ALPACA_API_SECRET=your_secret_here
+#    POLYGON_API_KEY=your_key_here
+#    ALPHA_VANTAGE_API_KEY=your_key_here
+#    FINNHUB_API_KEY=your_key_here
+#
+# 5. DataAggregator will use available providers automatically:
+#    - If no API keys set, uses yfinance (FREE)
+#    - If Alpaca configured, uses as primary source
+#    - Falls back to alternatives if primary fails
