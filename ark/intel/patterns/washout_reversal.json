@@ -1,0 +1,130 @@
+{
+  "pattern_id": "washout_reversal",
+  "name": "Washout Reversal",
+  "description": "Capitulation selling creates V-bottom - buy when weak hands are fully shaken out on volume spike",
+  "direction": "long",
+  "category": "mean_reversion",
+  "confidence_weight": 0.87,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "decline_from_high",
+        "operator": "gt",
+        "value": 40,
+        "description": "Down >40% from recent high"
+      },
+      {
+        "field": "volume_spike",
+        "operator": "gt",
+        "value": "5x_avg_volume",
+        "description": "Massive volume spike (>5x)"
+      },
+      {
+        "field": "price_action",
+        "operator": "eq",
+        "value": "v_bottom",
+        "description": "Sharp V-bottom reversal forming"
+      },
+      {
+        "field": "indicators.rsi",
+        "operator": "lt",
+        "value": 25,
+        "description": "RSI extreme oversold (<25)"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "support_level",
+        "operator": "eq",
+        "value": "major_support",
+        "weight": 0.25,
+        "description": "Held major support level"
+      },
+      {
+        "field": "catalyst",
+        "operator": "eq",
+        "value": "positive_shift",
+        "weight": 0.2,
+        "description": "Positive catalyst emerging"
+      },
+      {
+        "field": "insider_buying",
+        "operator": "eq",
+        "value": true,
+        "weight": 0.15,
+        "description": "Insider buying at lows"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.45,
+    "fundamental_weight": 0.25,
+    "catalyst_weight": 0.2,
+    "sentiment_weight": 0.1
+  },
+  
+  "entry_strategy": {
+    "type": "capitulation_reversal",
+    "trigger": "volume_climax_followed_by_strong_green_day",
+    "confirmation": "higher_low_established"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "support_level",
+    "stop_loss_value": "washout_low",
+    "position_size_max": 0.15,
+    "max_holding_period_hours": 240
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.25,
+      "exit_portion": 0.40,
+      "description": "Initial bounce (25%)"
+    },
+    {
+      "level": 2,
+      "percentage": 0.50,
+      "exit_portion": 0.35,
+      "description": "50% retracement of decline"
+    },
+    {
+      "level": 3,
+      "percentage": 0.75,
+      "exit_portion": 0.25,
+      "description": "Full recovery potential"
+    }
+  ],
+  
+  "warnings": [
+    "Can retest lows - use staged entry",
+    "Confirm fundamentals haven't permanently broken",
+    "Watch for dead cat bounce vs real reversal",
+    "Market conditions must be supportive",
+    "Don't confuse washout with ongoing breakdown"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "SNAP",
+      "date": "2022-10-27",
+      "decline_percent": 82,
+      "volume_multiplier": 8.4,
+      "outcome": "successful",
+      "gain_percent": 68,
+      "recovery_duration_days": 45
+    },
+    {
+      "symbol": "PINS",
+      "date": "2022-05-06",
+      "decline_percent": 67,
+      "volume_multiplier": 6.2,
+      "outcome": "successful",
+      "gain_percent": 52,
+      "recovery_duration_days": 32
+    }
+  ]
+}

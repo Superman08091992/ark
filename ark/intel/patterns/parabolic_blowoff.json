@@ -1,0 +1,128 @@
+{
+  "pattern_id": "parabolic_blowoff",
+  "name": "Parabolic Blowoff",
+  "description": "Vertical price acceleration near end of run - short when euphoria peaks and momentum breaks",
+  "direction": "short",
+  "category": "momentum_reversal",
+  "confidence_weight": 0.83,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "gain_last_5_days",
+        "operator": "gt",
+        "value": 50,
+        "description": "Up >50% in last 5 days"
+      },
+      {
+        "field": "acceleration",
+        "operator": "eq",
+        "value": "parabolic",
+        "description": "Price curve going vertical"
+      },
+      {
+        "field": "volume",
+        "operator": "eq",
+        "value": "climax",
+        "description": "Volume climax at peak"
+      },
+      {
+        "field": "indicators.rsi",
+        "operator": "gt",
+        "value": 80,
+        "description": "RSI extreme overbought (>80)"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "social_sentiment",
+        "operator": "eq",
+        "value": "euphoric",
+        "weight": 0.2,
+        "description": "Social media euphoria/FOMO"
+      },
+      {
+        "field": "news_coverage",
+        "operator": "eq",
+        "value": "mainstream",
+        "weight": 0.15,
+        "description": "Mainstream media coverage"
+      },
+      {
+        "field": "price_action",
+        "operator": "eq",
+        "value": "first_rejection",
+        "weight": 0.25,
+        "description": "First major rejection candle"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.5,
+    "fundamental_weight": 0.1,
+    "catalyst_weight": 0.15,
+    "sentiment_weight": 0.25
+  },
+  
+  "entry_strategy": {
+    "type": "reversal_short",
+    "trigger": "first_major_red_day_after_parabola",
+    "confirmation": "volume_spike_on_selling"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "percentage",
+    "stop_loss_value": 0.10,
+    "position_size_max": 0.10,
+    "max_holding_period_hours": 120
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.20,
+      "exit_portion": 0.50,
+      "description": "Initial crash (20%)"
+    },
+    {
+      "level": 2,
+      "percentage": 0.40,
+      "exit_portion": 0.30,
+      "description": "50% retracement of run"
+    },
+    {
+      "level": 3,
+      "percentage": 0.60,
+      "exit_portion": 0.20,
+      "description": "Full retracement"
+    }
+  ],
+  
+  "warnings": [
+    "DON'T short too early - wait for clear reversal",
+    "Can continue higher than rational (set stops)",
+    "Cover if breaks to new highs after pullback",
+    "Extremely risky - use tight position sizing",
+    "Watch for short squeeze if too crowded"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "COIN",
+      "date": "2021-11-09",
+      "peak_gain_5d": 68,
+      "outcome": "successful",
+      "gain_percent": 45,
+      "decline_duration_days": 12
+    },
+    {
+      "symbol": "ARKK",
+      "date": "2021-02-12",
+      "peak_gain_5d": 42,
+      "outcome": "successful",
+      "gain_percent": 52,
+      "decline_duration_days": 18
+    }
+  ]
+}

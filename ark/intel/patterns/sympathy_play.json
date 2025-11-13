@@ -1,0 +1,125 @@
+{
+  "pattern_id": "sympathy_play",
+  "name": "Sympathy Play",
+  "description": "Stock in same sector/theme moving in sympathy with primary mover - often lags but catches up",
+  "direction": "long",
+  "category": "momentum",
+  "confidence_weight": 0.75,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "sector_leader_gain",
+        "operator": "gt",
+        "value": 20,
+        "description": "Sector leader up >20%"
+      },
+      {
+        "field": "correlation",
+        "operator": "gt",
+        "value": 0.6,
+        "description": "High correlation with leader"
+      },
+      {
+        "field": "lag_percent",
+        "operator": "between",
+        "value": [0, 50],
+        "description": "Lagging leader by 0-50%"
+      },
+      {
+        "field": "volume",
+        "operator": "gt",
+        "value": "1.5x_avg_volume",
+        "description": "Volume increasing"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "price",
+        "operator": "lt",
+        "value": "leader_price",
+        "weight": 0.2,
+        "description": "Lower price than leader (more retail interest)"
+      },
+      {
+        "field": "float_",
+        "operator": "lt",
+        "value": 50,
+        "weight": 0.15,
+        "description": "Lower float than leader"
+      },
+      {
+        "field": "chart_pattern",
+        "operator": "eq",
+        "value": "breakout_setup",
+        "weight": 0.15,
+        "description": "Technical breakout forming"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.35,
+    "fundamental_weight": 0.15,
+    "catalyst_weight": 0.3,
+    "sentiment_weight": 0.2
+  },
+  
+  "entry_strategy": {
+    "type": "momentum_entry",
+    "trigger": "volume_spike_with_green_candle",
+    "confirmation": "leader_still_strong"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "percentage",
+    "stop_loss_value": 0.08,
+    "position_size_max": 0.10,
+    "max_holding_period_hours": 48
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.20,
+      "exit_portion": 0.50,
+      "description": "Catch-up move begins"
+    },
+    {
+      "level": 2,
+      "percentage": 0.40,
+      "exit_portion": 0.35,
+      "description": "Full catch-up to leader"
+    },
+    {
+      "level": 3,
+      "percentage": 0.60,
+      "exit_portion": 0.15,
+      "description": "Sympathy exceeds leader"
+    }
+  ],
+  
+  "warnings": [
+    "Exit immediately if sector leader reverses",
+    "Weaker fundamentals than leader - don't overstay",
+    "Watch for false sympathy moves on low volume",
+    "Correlation can break down quickly"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "BBBY",
+      "date": "2021-01-27",
+      "sector_leader": "GME",
+      "outcome": "successful",
+      "gain_percent": 78
+    },
+    {
+      "symbol": "TSLA",
+      "date": "2020-07-13",
+      "sector_leader": "NIO",
+      "outcome": "successful",
+      "gain_percent": 45
+    }
+  ]
+}

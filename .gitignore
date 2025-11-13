@@ -10,6 +10,7 @@ gui.log
 .netlify
 1true-site/
 ark/
+!ark/intel/
 devspark-app/
 
 # ARK specific

@@ -1,0 +1,127 @@
+{
+  "pattern_id": "morning_panic",
+  "name": "Morning Panic",
+  "description": "Emotional selling in first 30 minutes creates oversold bounce opportunity - buy the panic, sell the relief",
+  "direction": "long",
+  "category": "mean_reversion",
+  "confidence_weight": 0.80,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "decline_percent",
+        "operator": "gt",
+        "value": 5,
+        "description": "Down >5% in first 30min"
+      },
+      {
+        "field": "volume",
+        "operator": "gt",
+        "value": "3x_avg_volume",
+        "description": "Panic volume >3x average"
+      },
+      {
+        "field": "indicators.rsi",
+        "operator": "lt",
+        "value": 30,
+        "description": "RSI oversold (<30)"
+      },
+      {
+        "field": "catalyst",
+        "operator": "eq",
+        "value": "overreaction",
+        "description": "News overreaction, not fundamental"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "prior_trend",
+        "operator": "eq",
+        "value": "uptrend",
+        "weight": 0.25,
+        "description": "Stock was in uptrend before panic"
+      },
+      {
+        "field": "support_level",
+        "operator": "eq",
+        "value": "holding",
+        "weight": 0.2,
+        "description": "Holding key support level"
+      },
+      {
+        "field": "market_sentiment",
+        "operator": "eq",
+        "value": "positive",
+        "weight": 0.15,
+        "description": "Broader market not panicking"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.45,
+    "fundamental_weight": 0.2,
+    "catalyst_weight": 0.25,
+    "sentiment_weight": 0.1
+  },
+  
+  "entry_strategy": {
+    "type": "capitulation_entry",
+    "trigger": "volume_climax_with_reversal_candle",
+    "confirmation": "first_green_candle_after_low"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "percentage",
+    "stop_loss_value": 0.03,
+    "position_size_max": 0.12,
+    "max_holding_period_hours": 6
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.30,
+      "exit_portion": 0.60,
+      "description": "30% panic recovery (quick)"
+    },
+    {
+      "level": 2,
+      "percentage": 0.50,
+      "exit_portion": 0.30,
+      "description": "50% recovery"
+    },
+    {
+      "level": 3,
+      "percentage": 0.75,
+      "exit_portion": 0.10,
+      "description": "Full recovery to pre-panic"
+    }
+  ],
+  
+  "warnings": [
+    "Don't catch falling knives - wait for reversal signal",
+    "Exit by lunch if no bounce materializes",
+    "Avoid if fundamental news is truly bad",
+    "Market-wide panic requires different approach"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "AAPL",
+      "date": "2023-08-03",
+      "decline_percent": 6.2,
+      "outcome": "successful",
+      "gain_percent": 4.8,
+      "recovery_time_minutes": 180
+    },
+    {
+      "symbol": "MSFT",
+      "date": "2023-10-26",
+      "decline_percent": 7.1,
+      "outcome": "successful",
+      "gain_percent": 3.9,
+      "recovery_time_minutes": 240
+    }
+  ]
+}

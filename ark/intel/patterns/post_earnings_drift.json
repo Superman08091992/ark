@@ -1,0 +1,127 @@
+{
+  "pattern_id": "post_earnings_drift",
+  "name": "Post-Earnings Drift",
+  "description": "Stocks continue trending in earnings reaction direction for weeks - momentum persists beyond initial move",
+  "direction": "both",
+  "category": "momentum",
+  "confidence_weight": 0.85,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "earnings_beat",
+        "operator": "eq",
+        "value": true,
+        "description": "Beat on EPS and/or Revenue"
+      },
+      {
+        "field": "initial_reaction",
+        "operator": "gt",
+        "value": 5,
+        "description": "Initial move >5% on earnings"
+      },
+      {
+        "field": "volume",
+        "operator": "gt",
+        "value": "2x_avg_volume",
+        "description": "Strong volume on earnings day"
+      },
+      {
+        "field": "days_since_earnings",
+        "operator": "between",
+        "value": [1, 5],
+        "description": "1-5 days post-earnings"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "guidance",
+        "operator": "eq",
+        "value": "raised",
+        "weight": 0.25,
+        "description": "Company raised guidance"
+      },
+      {
+        "field": "analyst_upgrades",
+        "operator": "gt",
+        "value": 0,
+        "weight": 0.15,
+        "description": "Analyst upgrades following earnings"
+      },
+      {
+        "field": "price_action",
+        "operator": "eq",
+        "value": "consolidating_gains",
+        "weight": 0.2,
+        "description": "Consolidating near highs"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.25,
+    "fundamental_weight": 0.4,
+    "catalyst_weight": 0.25,
+    "sentiment_weight": 0.1
+  },
+  
+  "entry_strategy": {
+    "type": "pullback_entry",
+    "trigger": "first_consolidation_day_green_candle",
+    "confirmation": "volume_support_on_pullback"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "support_level",
+    "stop_loss_value": "earnings_reaction_low",
+    "position_size_max": 0.15,
+    "max_holding_period_hours": 480
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.10,
+      "exit_portion": 0.30,
+      "description": "Quick 10% move"
+    },
+    {
+      "level": 2,
+      "percentage": 0.20,
+      "exit_portion": 0.40,
+      "description": "Extended drift"
+    },
+    {
+      "level": 3,
+      "percentage": 0.30,
+      "exit_portion": 0.30,
+      "description": "Full drift cycle"
+    }
+  ],
+  
+  "warnings": [
+    "Exit if next earnings date approaches",
+    "Watch for sector rotation impact",
+    "Momentum can reverse quickly on macro news",
+    "Don't chase if already extended >20%"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "NVDA",
+      "date": "2023-05-24",
+      "earnings_beat_percent": 26,
+      "outcome": "successful",
+      "gain_percent": 42,
+      "drift_duration_days": 18
+    },
+    {
+      "symbol": "META",
+      "date": "2023-02-01",
+      "earnings_beat_percent": 18,
+      "outcome": "successful",
+      "gain_percent": 35,
+      "drift_duration_days": 14
+    }
+  ]
+}

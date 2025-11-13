@@ -1,0 +1,122 @@
+{
+  "pattern_id": "squeezer",
+  "name": "Squeezer",
+  "description": "Low float stock with rapid price compression and high short interest, setting up for explosive breakout",
+  "direction": "long",
+  "category": "momentum",
+  "confidence_weight": 0.95,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "float_",
+        "operator": "lt",
+        "value": 20,
+        "description": "Float under 20M shares"
+      },
+      {
+        "field": "short_interest",
+        "operator": "gt",
+        "value": 20,
+        "description": "Short interest > 20%"
+      },
+      {
+        "field": "volume",
+        "operator": "gt",
+        "value": "2x_avg_volume",
+        "description": "Volume > 2x average"
+      },
+      {
+        "field": "price_action",
+        "operator": "pattern",
+        "value": "tight_consolidation",
+        "description": "Tight consolidation near recent highs"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "catalyst",
+        "operator": "exists",
+        "value": true,
+        "weight": 0.2,
+        "description": "News catalyst present"
+      },
+      {
+        "field": "indicators.rsi",
+        "operator": "between",
+        "value": [40, 60],
+        "weight": 0.15,
+        "description": "RSI in neutral zone"
+      },
+      {
+        "field": "cost_to_borrow",
+        "operator": "gt",
+        "value": 100,
+        "weight": 0.1,
+        "description": "High cost to borrow (>100%)"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.4,
+    "fundamental_weight": 0.3,
+    "catalyst_weight": 0.2,
+    "sentiment_weight": 0.1
+  },
+  
+  "entry_strategy": {
+    "type": "breakout",
+    "trigger": "break_above_resistance",
+    "confirmation": "volume_surge"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "percentage",
+    "stop_loss_value": 0.05,
+    "position_size_max": 0.10,
+    "max_holding_period_hours": 48
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.15,
+      "exit_portion": 0.33,
+      "description": "First resistance break"
+    },
+    {
+      "level": 2,
+      "percentage": 0.30,
+      "exit_portion": 0.33,
+      "description": "Extended move"
+    },
+    {
+      "level": 3,
+      "percentage": 0.50,
+      "exit_portion": 0.34,
+      "description": "Blow-off top"
+    }
+  ],
+  
+  "warnings": [
+    "High volatility - use tight stops",
+    "Watch for halt risk on rapid moves",
+    "Exit quickly if volume dies"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "GME",
+      "date": "2021-01-27",
+      "outcome": "successful",
+      "gain_percent": 134
+    },
+    {
+      "symbol": "AMC",
+      "date": "2021-06-02",
+      "outcome": "successful",
+      "gain_percent": 95
+    }
+  ]
+}

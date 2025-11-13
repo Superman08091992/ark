@@ -1,0 +1,125 @@
+{
+  "pattern_id": "fading_the_gap",
+  "name": "Fading the Gap",
+  "description": "Short weak gap-ups that lack follow-through - gaps often fill same day on profit-taking",
+  "direction": "short",
+  "category": "mean_reversion",
+  "confidence_weight": 0.78,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "gap_percent",
+        "operator": "between",
+        "value": [3, 10],
+        "description": "Gap up 3-10% at open"
+      },
+      {
+        "field": "volume",
+        "operator": "lt",
+        "value": "avg_volume",
+        "description": "Below average volume on gap"
+      },
+      {
+        "field": "price_action",
+        "operator": "eq",
+        "value": "failed_breakout",
+        "description": "Immediate rejection at open"
+      },
+      {
+        "field": "catalyst_strength",
+        "operator": "eq",
+        "value": "weak",
+        "description": "No strong fundamental catalyst"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "indicators.rsi",
+        "operator": "gt",
+        "value": 70,
+        "weight": 0.2,
+        "description": "RSI overbought"
+      },
+      {
+        "field": "resistance_level",
+        "operator": "eq",
+        "value": "near",
+        "weight": 0.15,
+        "description": "Gap into resistance zone"
+      },
+      {
+        "field": "prior_trend",
+        "operator": "eq",
+        "value": "extended",
+        "weight": 0.15,
+        "description": "Stock already had big run"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.5,
+    "fundamental_weight": 0.2,
+    "catalyst_weight": 0.2,
+    "sentiment_weight": 0.1
+  },
+  
+  "entry_strategy": {
+    "type": "fade_entry",
+    "trigger": "first_15min_high_formed",
+    "confirmation": "rejection_candle_with_volume"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "fixed",
+    "stop_loss_value": "first_15min_high",
+    "position_size_max": 0.12,
+    "max_holding_period_hours": 8
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.50,
+      "exit_portion": 0.60,
+      "description": "50% gap fill (conservative)"
+    },
+    {
+      "level": 2,
+      "percentage": 0.75,
+      "exit_portion": 0.25,
+      "description": "75% gap fill"
+    },
+    {
+      "level": 3,
+      "percentage": 1.00,
+      "exit_portion": 0.15,
+      "description": "Full gap fill"
+    }
+  ],
+  
+  "warnings": [
+    "Cover immediately if breaks above first 15min high",
+    "Don't fade on extremely high volume gaps",
+    "Avoid if strong fundamental catalyst present",
+    "Best in first hour - don't chase after lunch"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "NFLX",
+      "date": "2022-04-20",
+      "gap_percent": 5.2,
+      "outcome": "successful",
+      "gain_percent": 7.8
+    },
+    {
+      "symbol": "PYPL",
+      "date": "2023-02-10",
+      "gap_percent": 8.4,
+      "outcome": "successful",
+      "gain_percent": 6.5
+    }
+  ]
+}

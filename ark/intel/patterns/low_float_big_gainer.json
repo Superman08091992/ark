@@ -1,0 +1,123 @@
+{
+  "pattern_id": "low_float_big_gainer",
+  "name": "Low Float Big Gainer",
+  "description": "Stock with tiny float experiencing massive percentage gains on news catalyst, often continues multi-day run",
+  "direction": "long",
+  "category": "momentum",
+  "confidence_weight": 0.88,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "float_",
+        "operator": "lt",
+        "value": 10,
+        "description": "Float under 10M shares"
+      },
+      {
+        "field": "price_change_percent",
+        "operator": "gt",
+        "value": 50,
+        "description": "Up >50% on the day"
+      },
+      {
+        "field": "catalyst",
+        "operator": "exists",
+        "value": true,
+        "description": "Clear news catalyst"
+      },
+      {
+        "field": "volume",
+        "operator": "gt",
+        "value": "5x_avg_volume",
+        "description": "Volume explosion (>5x avg)"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "market_cap",
+        "operator": "lt",
+        "value": 500,
+        "weight": 0.15,
+        "description": "Market cap under $500M"
+      },
+      {
+        "field": "price",
+        "operator": "between",
+        "value": [3, 20],
+        "weight": 0.1,
+        "description": "Price in sweet spot ($3-$20)"
+      },
+      {
+        "field": "pattern_time",
+        "operator": "eq",
+        "value": "pre_market",
+        "weight": 0.2,
+        "description": "Setup develops pre-market"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.25,
+    "fundamental_weight": 0.15,
+    "catalyst_weight": 0.45,
+    "sentiment_weight": 0.15
+  },
+  
+  "entry_strategy": {
+    "type": "pullback",
+    "trigger": "first_green_candle_after_pullback",
+    "confirmation": "volume_support"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "support_level",
+    "stop_loss_value": "previous_consolidation",
+    "position_size_max": 0.08,
+    "max_holding_period_hours": 120
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.25,
+      "exit_portion": 0.50,
+      "description": "Secure initial gains"
+    },
+    {
+      "level": 2,
+      "percentage": 0.50,
+      "exit_portion": 0.30,
+      "description": "Extended runner"
+    },
+    {
+      "level": 3,
+      "percentage": 1.00,
+      "exit_portion": 0.20,
+      "description": "Moonshot scenario"
+    }
+  ],
+  
+  "warnings": [
+    "Extreme volatility - can reverse quickly",
+    "Watch for dilution risk on micro caps",
+    "Avoid chasing at extremes - wait for pullback",
+    "High halt risk on rapid moves"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "DWAC",
+      "date": "2021-10-22",
+      "outcome": "successful",
+      "gain_percent": 357
+    },
+    {
+      "symbol": "PHUN",
+      "date": "2021-10-21",
+      "outcome": "successful",
+      "gain_percent": 456
+    }
+  ]
+}

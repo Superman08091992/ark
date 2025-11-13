@@ -1,0 +1,123 @@
+{
+  "pattern_id": "dead_cat_bounce",
+  "name": "Dead Cat Bounce",
+  "description": "Short-term relief rally in downtrend that fails quickly - excellent short setup after bounce exhausts",
+  "direction": "short",
+  "category": "mean_reversion",
+  "confidence_weight": 0.82,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "price_decline_percent",
+        "operator": "gt",
+        "value": 30,
+        "description": "Stock down >30% from recent high"
+      },
+      {
+        "field": "bounce_percent",
+        "operator": "between",
+        "value": [10, 25],
+        "description": "Relief bounce 10-25%"
+      },
+      {
+        "field": "volume",
+        "operator": "lt",
+        "value": "avg_volume",
+        "description": "Bounce on declining volume"
+      },
+      {
+        "field": "indicators.rsi",
+        "operator": "lt",
+        "value": 50,
+        "description": "RSI fails to reach overbought"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "catalyst",
+        "operator": "eq",
+        "value": "negative",
+        "weight": 0.25,
+        "description": "Negative fundamental catalyst remains"
+      },
+      {
+        "field": "short_interest",
+        "operator": "lt",
+        "value": 10,
+        "weight": 0.15,
+        "description": "Low short interest (less squeeze risk)"
+      },
+      {
+        "field": "resistance_test",
+        "operator": "eq",
+        "value": "rejected",
+        "weight": 0.2,
+        "description": "Price rejected at previous support"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.45,
+    "fundamental_weight": 0.3,
+    "catalyst_weight": 0.15,
+    "sentiment_weight": 0.1
+  },
+  
+  "entry_strategy": {
+    "type": "reversal_short",
+    "trigger": "break_below_bounce_low",
+    "confirmation": "volume_increase_on_breakdown"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "percentage",
+    "stop_loss_value": 0.07,
+    "position_size_max": 0.12,
+    "max_holding_period_hours": 72
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.15,
+      "exit_portion": 0.50,
+      "description": "Initial breakdown"
+    },
+    {
+      "level": 2,
+      "percentage": 0.30,
+      "exit_portion": 0.30,
+      "description": "Test of lows"
+    },
+    {
+      "level": 3,
+      "percentage": 0.50,
+      "exit_portion": 0.20,
+      "description": "New lows scenario"
+    }
+  ],
+  
+  "warnings": [
+    "Watch for short squeeze if volume increases",
+    "Cover immediately if breaks above bounce high",
+    "Avoid shorting if positive news emerges",
+    "Use tight stops - broken stocks can rally hard"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "RIVN",
+      "date": "2022-05-10",
+      "outcome": "successful",
+      "gain_percent": 28
+    },
+    {
+      "symbol": "CVNA",
+      "date": "2022-11-08",
+      "outcome": "successful",
+      "gain_percent": 42
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "pattern_id": "short_squeeze_setup",
+  "name": "Short Squeeze Setup",
+  "description": "High short interest stock with catalyst forcing shorts to cover - creates violent upward spiral",
+  "direction": "long",
+  "category": "momentum",
+  "confidence_weight": 0.90,
+  
+  "rules": {
+    "required": [
+      {
+        "field": "short_interest",
+        "operator": "gt",
+        "value": 30,
+        "description": "Short interest >30% of float"
+      },
+      {
+        "field": "days_to_cover",
+        "operator": "gt",
+        "value": 3,
+        "description": "Days to cover >3"
+      },
+      {
+        "field": "catalyst",
+        "operator": "exists",
+        "value": true,
+        "description": "Positive catalyst present"
+      },
+      {
+        "field": "price_action",
+        "operator": "eq",
+        "value": "breaking_resistance",
+        "description": "Breaking above key resistance"
+      }
+    ],
+    "preferred": [
+      {
+        "field": "cost_to_borrow",
+        "operator": "gt",
+        "value": 100,
+        "weight": 0.25,
+        "description": "High borrow cost (>100%)"
+      },
+      {
+        "field": "float_",
+        "operator": "lt",
+        "value": 50,
+        "weight": 0.2,
+        "description": "Small float amplifies squeeze"
+      },
+      {
+        "field": "retail_sentiment",
+        "operator": "eq",
+        "value": "bullish",
+        "weight": 0.15,
+        "description": "Strong retail buying pressure"
+      }
+    ]
+  },
+  
+  "scoring": {
+    "technical_weight": 0.35,
+    "fundamental_weight": 0.15,
+    "catalyst_weight": 0.3,
+    "sentiment_weight": 0.2
+  },
+  
+  "entry_strategy": {
+    "type": "breakout",
+    "trigger": "resistance_break_with_volume_surge",
+    "confirmation": "short_interest_still_high"
+  },
+  
+  "risk_management": {
+    "stop_loss_type": "volatility_based",
+    "stop_loss_value": "2x_atr",
+    "position_size_max": 0.08,
+    "max_holding_period_hours": 72
+  },
+  
+  "profit_targets": [
+    {
+      "level": 1,
+      "percentage": 0.25,
+      "exit_portion": 0.40,
+      "description": "Initial squeeze move"
+    },
+    {
+      "level": 2,
+      "percentage": 0.50,
+      "exit_portion": 0.35,
+      "description": "Extended squeeze"
+    },
+    {
+      "level": 3,
+      "percentage": 1.00,
+      "exit_portion": 0.25,
+      "description": "Full squeeze potential"
+    }
+  ],
+  
+  "warnings": [
+    "EXTREME volatility - use wide stops",
+    "Can reverse violently when shorts covered",
+    "Watch for halts and circuit breakers",
+    "Exit on volume exhaustion signs",
+    "Don't chase if already squeezed >100%"
+  ],
+  
+  "examples": [
+    {
+      "symbol": "GME",
+      "date": "2021-01-13",
+      "short_interest_percent": 140,
+      "outcome": "successful",
+      "gain_percent": 1625,
+      "squeeze_duration_days": 14
+    },
+    {
+      "symbol": "BBBY",
+      "date": "2022-08-16",
+      "short_interest_percent": 42,
+      "outcome": "successful",
+      "gain_percent": 380,
+      "squeeze_duration_days": 7
+    }
+  ]
+}
