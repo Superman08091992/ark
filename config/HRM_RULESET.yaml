@@ -1,0 +1,455 @@
+# HRM (Human Risk Manager) Ruleset
+# Trading-specific arbitration and validation rules
+# Version: 1.0.0
+# Last Updated: 2025-11-13
+
+---
+ruleset_version: "1.0.0"
+enabled: true
+strict_mode: true  # Reject on ANY validation failure
+
+# =============================================================================
+# ETHICS & COMPLIANCE RULES
+# =============================================================================
+ethics:
+  description: "Prevent unethical or illegal trading practices"
+  
+  rules:
+    - id: "ETH-001"
+      name: "No Penny Stocks"
+      severity: "critical"
+      enabled: true
+      validation:
+        field: "price"
+        operator: "gte"
+        value: 1.0
+        error_message: "Price below $1.00 - classified as penny stock"
+        suggested_action: "Filter out stocks under $1.00"
+    
+    - id: "ETH-002"
+      name: "No Manipulation Patterns"
+      severity: "critical"
+      enabled: true
+      validation:
+        field: "catalyst"
+        operator: "not_contains"
+        values: ["pump", "dump", "coordinated", "manipulation", "scheme"]
+        error_message: "Catalyst suggests potential market manipulation"
+        suggested_action: "Reject setup and flag for review"
+    
+    - id: "ETH-003"
+      name: "No Insider Trading Signals"
+      severity: "critical"
+      enabled: true
+      validation:
+        field: "metadata.source"
+        operator: "not_equals"
+        value: "insider_tip"
+        error_message: "Trade setup appears to be based on insider information"
+        suggested_action: "Reject immediately and report"
+    
+    - id: "ETH-004"
+      name: "Adequate Liquidity"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "avg_volume"
+        operator: "gte"
+        value: 100000
+        error_message: "Average volume below 100k shares - insufficient liquidity"
+        suggested_action: "Increase minimum volume threshold to 500k"
+
+# =============================================================================
+# RISK MANAGEMENT RULES
+# =============================================================================
+risk:
+  description: "Enforce position sizing and risk limits"
+  
+  global_limits:
+    max_position_size_percent: 10.0  # Max 10% of capital per trade
+    max_daily_loss_percent: 2.0      # Max 2% daily portfolio loss
+    max_weekly_loss_percent: 5.0     # Max 5% weekly portfolio loss
+    max_concurrent_positions: 5      # Max 5 open positions
+    max_sector_exposure_percent: 25.0  # Max 25% in one sector
+  
+  rules:
+    - id: "RISK-001"
+      name: "Maximum Position Size"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "position_size"
+        operator: "lte"
+        value: 0.10  # 10% max
+        error_message: "Position size exceeds 10% of capital"
+        suggested_action: "Reduce position to 10% or less"
+    
+    - id: "RISK-002"
+      name: "Stop Loss Required"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "stop_loss"
+        operator: "exists"
+        value: true
+        error_message: "No stop loss defined"
+        suggested_action: "Calculate stop loss based on pattern risk management"
+    
+    - id: "RISK-003"
+      name: "Risk-Reward Ratio Minimum"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "risk_reward_ratio"
+        operator: "gte"
+        value: 2.0  # Minimum 2:1 R:R
+        error_message: "Risk-reward ratio below 2:1"
+        suggested_action: "Adjust targets or pass on setup"
+    
+    - id: "RISK-004"
+      name: "Maximum Loss Per Trade"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "max_loss_percent"
+        operator: "lte"
+        value: 0.02  # Max 2% per trade
+        error_message: "Potential loss exceeds 2% of capital"
+        suggested_action: "Reduce position size or widen stop"
+    
+    - id: "RISK-005"
+      name: "Volatile Stock Position Limit"
+      severity: "warning"
+      enabled: true
+      validation:
+        conditions:
+          - field: "indicators.atr"
+            operator: "gte"
+            value: 0.05  # ATR > 5%
+        then:
+          field: "position_size"
+          operator: "lte"
+          value: 0.05  # Max 5% for volatile stocks
+        error_message: "High volatility stock requires reduced position size"
+        suggested_action: "Reduce position to 5% or less"
+
+# =============================================================================
+# PATTERN RELIABILITY RULES
+# =============================================================================
+pattern_quality:
+  description: "Ensure pattern matches are high confidence"
+  
+  minimum_confidence: 0.65  # 65% minimum confidence
+  
+  rules:
+    - id: "PAT-001"
+      name: "Minimum Pattern Confidence"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "confidence"
+        operator: "gte"
+        value: 0.65
+        error_message: "Pattern confidence below 65% threshold"
+        suggested_action: "Only trade setups with >65% confidence"
+    
+    - id: "PAT-002"
+      name: "Pattern Must Be Identified"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "pattern"
+        operator: "exists"
+        value: true
+        error_message: "No pattern identified for trade setup"
+        suggested_action: "Run pattern matching before HRM validation"
+    
+    - id: "PAT-003"
+      name: "Minimum Quality Score"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "scores.weighted_total"
+        operator: "gte"
+        value: 0.60  # 60% minimum quality score
+        error_message: "Overall quality score below 60%"
+        suggested_action: "Look for higher quality setups"
+    
+    - id: "PAT-004"
+      name: "Technical Score Minimum"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "scores.technical_score"
+        operator: "gte"
+        value: 0.50
+        error_message: "Technical score below 50%"
+        suggested_action: "Wait for better technical setup"
+
+# =============================================================================
+# MARKET CONDITIONS RULES
+# =============================================================================
+market_conditions:
+  description: "Validate market environment is suitable"
+  
+  rules:
+    - id: "MKT-001"
+      name: "Market Hours Only"
+      severity: "warning"
+      enabled: false  # Disabled for now (24/7 crypto support)
+      validation:
+        field: "metadata.trading_hours"
+        operator: "equals"
+        value: "regular"
+        error_message: "Trade setup outside regular market hours"
+        suggested_action: "Wait for market open or adjust strategy"
+    
+    - id: "MKT-002"
+      name: "Avoid Major News Events"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "metadata.fomc_day"
+        operator: "not_equals"
+        value: true
+        error_message: "Trade setup on FOMC announcement day"
+        suggested_action: "Reduce position size or avoid entirely"
+    
+    - id: "MKT-003"
+      name: "VIX Extreme Caution"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "metadata.vix"
+        operator: "lte"
+        value: 35
+        error_message: "VIX above 35 indicates extreme volatility"
+        suggested_action: "Reduce position sizes by 50%"
+
+# =============================================================================
+# USER ALIGNMENT RULES
+# =============================================================================
+user_preferences:
+  description: "Ensure trades align with user's strategy and risk tolerance"
+  
+  rules:
+    - id: "USER-001"
+      name: "Direction Alignment"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "direction"
+        operator: "in"
+        values: ["long", "short", "swing"]
+        error_message: "Invalid trade direction"
+        suggested_action: "Verify direction is long, short, or swing"
+    
+    - id: "USER-002"
+      name: "Asset Type Allowed"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "market_type"
+        operator: "in"
+        values: ["equity", "crypto"]  # User only trades stocks and crypto
+        error_message: "Asset type not in user's approved list"
+        suggested_action: "Skip forex and options setups"
+    
+    - id: "USER-003"
+      name: "Holding Period Alignment"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "metadata.expected_holding_hours"
+        operator: "lte"
+        value: 120  # User prefers trades under 5 days
+        error_message: "Expected holding period exceeds user preference"
+        suggested_action: "Focus on shorter-term setups"
+
+# =============================================================================
+# DATA QUALITY RULES
+# =============================================================================
+data_quality:
+  description: "Ensure trade setup has complete and valid data"
+  
+  rules:
+    - id: "DATA-001"
+      name: "Required Fields Present"
+      severity: "error"
+      enabled: true
+      validation:
+        fields_required:
+          - "symbol"
+          - "price"
+          - "direction"
+          - "volume"
+        error_message: "Missing required fields"
+        suggested_action: "Fetch missing data before validation"
+    
+    - id: "DATA-002"
+      name: "Reasonable Price Range"
+      severity: "error"
+      enabled: true
+      validation:
+        field: "price"
+        operator: "between"
+        value: [0.01, 10000.0]
+        error_message: "Price outside reasonable range ($0.01-$10,000)"
+        suggested_action: "Verify data source accuracy"
+    
+    - id: "DATA-003"
+      name: "Fresh Data"
+      severity: "warning"
+      enabled: true
+      validation:
+        field: "timestamp"
+        operator: "age_minutes_lte"
+        value: 15  # Data must be <15 minutes old
+        error_message: "Data is stale (>15 minutes old)"
+        suggested_action: "Refresh market data"
+
+# =============================================================================
+# PATTERN-SPECIFIC OVERRIDES
+# =============================================================================
+pattern_overrides:
+  description: "Pattern-specific rule adjustments"
+  
+  overrides:
+    - pattern_id: "short_squeeze_setup"
+      adjustments:
+        risk.max_position_size_percent: 5.0  # Reduce to 5% for squeezes
+        pattern_quality.minimum_confidence: 0.75  # Require 75% confidence
+        reason: "Short squeezes are extremely volatile"
+    
+    - pattern_id: "parabolic_blowoff"
+      adjustments:
+        risk.max_position_size_percent: 8.0
+        risk.stop_loss_percent_override: 0.10  # Wider stop for volatility
+        reason: "Parabolic moves require wider stops"
+    
+    - pattern_id: "washout_reversal"
+      adjustments:
+        pattern_quality.minimum_confidence: 0.70
+        risk.risk_reward_ratio: 3.0  # Require 3:1 R:R
+        reason: "Reversals are difficult - require higher edge"
+
+# =============================================================================
+# EMERGENCY CIRCUIT BREAKERS
+# =============================================================================
+circuit_breakers:
+  description: "Automatic trading suspension triggers"
+  
+  triggers:
+    - id: "CB-001"
+      name: "Daily Loss Limit Hit"
+      severity: "critical"
+      enabled: true
+      condition:
+        field: "metadata.daily_pnl_percent"
+        operator: "lte"
+        value: -2.0  # -2% daily loss
+      action: "suspend_trading"
+      duration_minutes: 1440  # 24 hours
+      notification: "CRITICAL: Daily loss limit reached. Trading suspended for 24 hours."
+    
+    - id: "CB-002"
+      name: "Consecutive Losses"
+      severity: "critical"
+      enabled: true
+      condition:
+        field: "metadata.consecutive_losses"
+        operator: "gte"
+        value: 3
+      action: "reduce_position_sizes"
+      adjustment_factor: 0.5  # Cut sizes in half
+      notification: "WARNING: 3 consecutive losses. Position sizes reduced by 50%."
+    
+    - id: "CB-003"
+      name: "Market Crash Detected"
+      severity: "critical"
+      enabled: true
+      condition:
+        field: "metadata.market_drop_percent"
+        operator: "lte"
+        value: -3.0  # Market down 3%+ today
+      action: "close_all_long_positions"
+      notification: "CRITICAL: Market crash detected. Closing all long positions."
+
+# =============================================================================
+# VALIDATION WORKFLOW
+# =============================================================================
+workflow:
+  description: "Order of rule evaluation"
+  
+  stages:
+    - stage: 1
+      name: "Ethics & Compliance"
+      categories: ["ethics"]
+      halt_on_failure: true
+      
+    - stage: 2
+      name: "Data Quality"
+      categories: ["data_quality"]
+      halt_on_failure: true
+      
+    - stage: 3
+      name: "Risk Management"
+      categories: ["risk"]
+      halt_on_failure: false  # Continue to collect all errors
+      
+    - stage: 4
+      name: "Pattern Quality"
+      categories: ["pattern_quality"]
+      halt_on_failure: false
+      
+    - stage: 5
+      name: "Market Conditions"
+      categories: ["market_conditions"]
+      halt_on_failure: false
+      
+    - stage: 6
+      name: "User Alignment"
+      categories: ["user_preferences"]
+      halt_on_failure: false
+      
+    - stage: 7
+      name: "Circuit Breakers"
+      categories: ["circuit_breakers"]
+      halt_on_failure: true
+
+# =============================================================================
+# REPORTING & METRICS
+# =============================================================================
+reporting:
+  log_all_validations: true
+  log_level: "INFO"
+  
+  metrics_tracked:
+    - "total_setups_validated"
+    - "approved_count"
+    - "rejected_count"
+    - "rejection_reasons"
+    - "average_confidence"
+    - "average_quality_score"
+    - "circuit_breaker_triggers"
+  
+  alert_on:
+    - severity: "critical"
+      notification_channels: ["telegram", "email", "slack"]
+    - severity: "error"
+      notification_channels: ["telegram"]
+
+# =============================================================================
+# METADATA
+# =============================================================================
+metadata:
+  author: "ARK Trading Intelligence Team"
+  last_reviewed: "2025-11-13"
+  next_review: "2025-12-13"
+  changelog:
+    - version: "1.0.0"
+      date: "2025-11-13"
+      changes:
+        - "Initial ruleset creation"
+        - "Defined ethics, risk, pattern quality rules"
+        - "Added circuit breakers and emergency controls"
