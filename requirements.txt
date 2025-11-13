@@ -1,24 +1,60 @@
+# ARK Core Dependencies
+# Complete list for all ARK systems and tools
+
+# ============================================================================
+# Core Web Framework
+# ============================================================================
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
+websockets==12.0
+python-multipart==0.0.18
+
+# ============================================================================
+# Database & Caching
+# ============================================================================
 sqlalchemy==2.0.23
 aiosqlite==0.19.0
-redis==5.0.1
-aioredis==2.0.1
+redis==5.0.1           # Required for federation features
+aioredis==2.0.1        # Legacy async Redis support
+
+# ============================================================================
+# HTTP & Web Scraping
+# ============================================================================
 httpx==0.25.2
 beautifulsoup4==4.12.2
 playwright==1.40.0
+
+# ============================================================================
+# Data Science & Analytics
+# ============================================================================
 pandas>=2.1.4
 numpy>=1.26.0
 scikit-learn>=1.3.2
-sympy==1.12
 matplotlib>=3.8.2
 plotly==5.17.0
+sympy==1.12
+
+# ============================================================================
+# External Integrations
+# ============================================================================
 python-telegram-bot==20.7
-websockets==12.0
-python-multipart==0.0.18
+
+# ============================================================================
+# Utilities
+# ============================================================================
 jinja2==3.1.6
 python-dotenv==1.0.0
-psutil==5.9.6
-tabulate==0.9.0
-cryptography==41.0.7
+
+# ============================================================================
+# ARK Tools Suite Dependencies (v1.0)
+# Required for: admin, backup, monitor, database, federation, dev tools
+# ============================================================================
+psutil==5.9.6          # System monitoring (ark-monitor, ark-admin)
+tabulate==0.9.0        # Table formatting (ark-db, ark-admin)
+cryptography==41.0.7   # Ed25519 keys (ark-federation)
+
+# Optional Tools Dependencies:
+# - flake8, pylint, black  (code quality - ark-dev)
+# - pytest                 (testing - ark-dev)
+# System tools required: tar, gzip, sqlite3, redis-cli, git
