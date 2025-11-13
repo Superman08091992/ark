@@ -1,0 +1,112 @@
+---
+# Deployment for ARK Trading Intelligence API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ark-api
+  namespace: ark-trading
+  labels:
+    app: ark-trading-api
+    version: v1
+spec:
+  replicas: 2  # Run 2 instances for high availability
+  selector:
+    matchLabels:
+      app: ark-trading-api
+  template:
+    metadata:
+      labels:
+        app: ark-trading-api
+        version: v1
+    spec:
+      containers:
+      - name: api
+        image: ark-trading-api:latest  # Replace with your registry
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: ark-api-config
+        - secretRef:
+            name: ark-api-secret
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        
+        # Liveness probe (is container alive?)
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Readiness probe (is container ready to serve traffic?)
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Startup probe (for slow-starting containers)
+        startupProbe:
+          httpGet:
+            path: /api/v1/health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12  # 12 * 5s = 60s max startup time
+        
+        # Volume mounts
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: patterns
+          mountPath: /app/ark/intel/patterns
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+      
+      # Volumes
+      volumes:
+      - name: config
+        configMap:
+          name: ark-api-config
+      - name: patterns
+        configMap:
+          name: ark-patterns  # Separate ConfigMap for pattern files
+      - name: logs
+        emptyDir: {}
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Node selector (optional - for specific node types)
+      # nodeSelector:
+      #   workload: compute-intensive

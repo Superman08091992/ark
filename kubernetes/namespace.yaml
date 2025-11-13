@@ -1,0 +1,9 @@
+---
+# Namespace for ARK Trading Intelligence
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ark-trading
+  labels:
+    app: ark-trading-intelligence
+    environment: production

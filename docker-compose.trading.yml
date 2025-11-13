@@ -1,0 +1,89 @@
+# ARK Trading Intelligence - Docker Compose
+# Complete trading backend deployment
+
+version: '3.8'
+
+services:
+  # Trading Intelligence API
+  ark-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: ark-trading-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - ACCOUNT_SIZE=${ACCOUNT_SIZE:-100000.0}
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+      - ./ark:/app/ark:ro
+      - ./data:/app/data
+    networks:
+      - ark-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis (for caching and message queue - optional)
+  redis:
+    image: redis:7-alpine
+    container_name: ark-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - ark-network
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # PostgreSQL (for persistent storage - optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: ark-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=ark_trading
+      - POSTGRES_USER=${POSTGRES_USER:-arkuser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+    networks:
+      - ark-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deployment/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arkuser}"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  ark-network:
+    driver: bridge

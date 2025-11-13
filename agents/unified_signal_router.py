@@ -32,6 +32,9 @@ from ark.intel.engines.pattern_engine import get_pattern_engine
 from ark.intel.engines.trade_scorer import get_trade_scorer
 from ark.intel.engines.trade_plan_builder import get_trade_plan_builder
 
+# Telegram service
+from services.telegram_service import get_telegram_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,6 +68,7 @@ class UnifiedSignalRouter(BaseAgent, ErrorHandlerMixin):
         self.pattern_engine = get_pattern_engine()
         self.trade_scorer = get_trade_scorer()
         self.plan_builder = get_trade_plan_builder(account_size)
+        self.telegram = get_telegram_service()
         
         # Load HRM ruleset
         if hrm_ruleset_path is None:
@@ -269,8 +273,22 @@ class UnifiedSignalRouter(BaseAgent, ErrorHandlerMixin):
             )
             
             # ========== STAGE 6: NOTIFY TELEGRAM ==========
-            self.logger.info(f"📢 Stage 6: Broadcasting signal event: {symbol}")
+            self.logger.info(f"📢 Stage 6: Sending to Telegram: {symbol}")
             
+            # Send to Telegram if enabled
+            if self.telegram._initialized:
+                try:
+                    telegram_sent = await self.telegram.send_trade_signal(trade_setup)
+                    if telegram_sent:
+                        self.logger.info(f"✅ Telegram notification sent for {symbol}")
+                    else:
+                        self.logger.warning(f"⚠️ Telegram notification failed for {symbol}")
+                except Exception as e:
+                    self.logger.error(f"❌ Telegram error for {symbol}: {str(e)}")
+            else:
+                self.logger.info(f"ℹ️ Telegram disabled - skipping notification for {symbol}")
+            
+            # Also broadcast signal event for other subscribers
             await self.send_event(
                 payload={
                     "event_type": "signal_generated",
@@ -282,7 +300,8 @@ class UnifiedSignalRouter(BaseAgent, ErrorHandlerMixin):
                     "entry": execution_plan.entry_price,
                     "stop": execution_plan.stop_loss,
                     "targets": execution_plan.targets,
-                    "risk_reward": execution_plan.risk_reward_ratio
+                    "risk_reward": execution_plan.risk_reward_ratio,
+                    "trade_setup": trade_setup
                 },
                 correlation_id=correlation_id
             )

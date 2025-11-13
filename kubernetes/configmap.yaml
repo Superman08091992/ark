@@ -1,0 +1,29 @@
+---
+# ConfigMap for ARK Trading Intelligence API
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ark-api-config
+  namespace: ark-trading
+  labels:
+    app: ark-trading-api
+data:
+  # Application settings
+  LOG_LEVEL: "INFO"
+  ACCOUNT_SIZE: "100000.0"
+  
+  # Pattern matching settings
+  MIN_CONFIDENCE: "0.65"
+  MIN_QUALITY_SCORE: "0.60"
+  
+  # Data provider settings
+  DATA_CACHE_TTL: "30"
+  
+  # HRM settings
+  HRM_ENABLED: "true"
+  MAX_POSITION_SIZE: "0.10"
+  MAX_DAILY_LOSS: "0.02"
+  
+  # API settings
+  API_WORKERS: "4"
+  API_TIMEOUT: "30"

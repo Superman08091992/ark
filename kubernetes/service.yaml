@@ -1,0 +1,39 @@
+---
+# Service for ARK Trading Intelligence API
+apiVersion: v1
+kind: Service
+metadata:
+  name: ark-api-service
+  namespace: ark-trading
+  labels:
+    app: ark-trading-api
+spec:
+  type: ClusterIP  # Internal service (use LoadBalancer for external)
+  selector:
+    app: ark-trading-api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: http
+  sessionAffinity: ClientIP  # Sticky sessions
+
+---
+# Optional: LoadBalancer service for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: ark-api-external
+  namespace: ark-trading
+  labels:
+    app: ark-trading-api
+spec:
+  type: LoadBalancer
+  selector:
+    app: ark-trading-api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: http
+  sessionAffinity: ClientIP
