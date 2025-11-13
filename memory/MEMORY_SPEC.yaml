@@ -1,0 +1,555 @@
+# ==============================================================================
+# ARK Memory Engine Persistence Specification v2.0 (REQ_MEM_01)
+# ==============================================================================
+#
+# This specification defines the authoritative contracts for ARK memory storage,
+# compression, deduplication, and retrieval operations.
+#
+# Compliance: All memory operations MUST adhere to these contracts to ensure
+#             deterministic behavior, data integrity, and idempotent operations.
+#
+# ==============================================================================
+
+version: "2.0"
+last_updated: "2025-11-13"
+status: "production"
+
+# ==============================================================================
+# SECTION 1: STORAGE SCHEMA
+# ==============================================================================
+
+storage:
+  backend: "sqlite3"
+  database_path: "data/ark_memory.db"
+  wal_mode: true
+  journal_mode: "WAL"
+  synchronous: "NORMAL"
+  cache_size: 10000
+  
+  tables:
+    reasoning_log:
+      description: "Raw reasoning traces from agents"
+      primary_key: "id"
+      indexes:
+        - "agent"
+        - "ts"
+        - "confidence"
+        - "trust_tier"
+      
+      columns:
+        id:
+          type: "TEXT"
+          constraints: "PRIMARY KEY"
+          description: "Unique trace ID (UUID v4)"
+          format: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+        
+        agent:
+          type: "TEXT"
+          constraints: "NOT NULL"
+          description: "Agent name (kyle, joey, kenny, hrm, aletheia, id)"
+          enum: ["kyle", "joey", "kenny", "hrm", "aletheia", "id"]
+        
+        ts:
+          type: "INTEGER"
+          constraints: "NOT NULL"
+          description: "Unix timestamp (seconds since epoch)"
+          validation: "ts > 0 AND ts <= current_timestamp"
+        
+        input:
+          type: "TEXT"
+          constraints: "NOT NULL"
+          description: "Input query or prompt"
+          max_length: 100000
+        
+        output:
+          type: "TEXT"
+          constraints: "NOT NULL"
+          description: "Agent output/response"
+          max_length: 1000000
+        
+        depth:
+          type: "INTEGER"
+          default: 3
+          description: "Reasoning depth (1=SHALLOW, 2=MODERATE, 3=DEEP, 4=EXHAUSTIVE)"
+          validation: "depth >= 1 AND depth <= 4"
+        
+        confidence:
+          type: "REAL"
+          default: 0.0
+          description: "Confidence score [0.0, 1.0]"
+          validation: "confidence >= 0.0 AND confidence <= 1.0"
+        
+        duration_ms:
+          type: "REAL"
+          default: 0.0
+          description: "Processing duration in milliseconds"
+          validation: "duration_ms >= 0.0"
+        
+        path:
+          type: "TEXT"
+          nullable: true
+          description: "Reasoning path/chain"
+        
+        signature:
+          type: "TEXT"
+          nullable: true
+          description: "Ed25519 signature (federation)"
+          format: "base64"
+        
+        peer_id:
+          type: "TEXT"
+          nullable: true
+          description: "Source peer ID (federation)"
+        
+        metadata:
+          type: "TEXT"
+          nullable: true
+          description: "JSON-encoded metadata"
+          format: "json"
+        
+        trust_tier:
+          type: "TEXT"
+          default: "unknown"
+          description: "Trust classification"
+          enum: ["core", "sandbox", "external", "unknown", "quarantine"]
+        
+        created_at:
+          type: "INTEGER"
+          default: "current_timestamp"
+          description: "Insertion timestamp"
+    
+    memory_chunks:
+      description: "Consolidated memory units"
+      primary_key: "chunk_id"
+      indexes:
+        - "source_id"
+        - "ts"
+        - "hash"
+        - "trust_tier"
+        - "consolidated"
+      
+      columns:
+        chunk_id:
+          type: "TEXT"
+          constraints: "PRIMARY KEY"
+          description: "Unique chunk ID (UUID v4)"
+        
+        source_id:
+          type: "TEXT"
+          constraints: "NOT NULL"
+          description: "Source reasoning_log ID"
+        
+        ts:
+          type: "INTEGER"
+          constraints: "NOT NULL"
+          description: "Timestamp of source trace"
+        
+        text:
+          type: "TEXT"
+          constraints: "NOT NULL"
+          description: "Consolidated text content"
+          max_length: 50000
+        
+        summary:
+          type: "TEXT"
+          nullable: true
+          description: "Extractive summary"
+          max_length: 5000
+        
+        tokens:
+          type: "INTEGER"
+          default: 0
+          description: "Approximate token count"
+        
+        embedding:
+          type: "BLOB"
+          nullable: true
+          description: "TF-IDF or vector embedding"
+          format: "numpy.ndarray (float32)"
+        
+        hash:
+          type: "TEXT"
+          constraints: "UNIQUE NOT NULL"
+          description: "SHA256 content hash"
+          format: "hex (64 chars)"
+        
+        provenance:
+          type: "TEXT"
+          nullable: true
+          description: "Source chain (JSON array)"
+          format: "json"
+        
+        trust_tier:
+          type: "TEXT"
+          default: "unknown"
+          description: "Inherited trust tier"
+          enum: ["core", "sandbox", "external", "unknown", "quarantine"]
+        
+        consolidated:
+          type: "INTEGER"
+          default: 0
+          description: "Consolidation pass count"
+        
+        created_at:
+          type: "INTEGER"
+          default: "current_timestamp"
+          description: "Chunk creation timestamp"
+
+# ==============================================================================
+# SECTION 2: COMPRESSION CONTRACTS
+# ==============================================================================
+
+compression:
+  algorithm: "extractive_summarization"
+  target_ratio: 0.3
+  min_length: 100
+  max_length: 50000
+  
+  rules:
+    - id: "COMP-001"
+      description: "Preserve key facts and entities"
+      implementation: "Extract sentences with named entities and numerical data"
+    
+    - id: "COMP-002"
+      description: "Maintain temporal ordering"
+      implementation: "Preserve chronological sequence of events"
+    
+    - id: "COMP-003"
+      description: "Compress redundant information"
+      implementation: "Remove duplicate sentences and paraphrases"
+    
+    - id: "COMP-004"
+      description: "Idempotent compression"
+      implementation: "compress(compress(text)) == compress(text)"
+
+  stages:
+    stage1_summarize:
+      description: "Extractive summary generation"
+      target_ratio: 0.5
+      method: "sentence_scoring"
+      
+    stage2_compress:
+      description: "Token-level compression"
+      target_ratio: 0.6
+      method: "stop_word_removal"
+      
+    stage3_dedupe:
+      description: "Deduplication via hash"
+      method: "sha256"
+      
+    stage4_embed:
+      description: "Generate embeddings"
+      method: "tfidf"
+      dimensions: 300
+
+# ==============================================================================
+# SECTION 3: DEDUPLICATION CONTRACTS
+# ==============================================================================
+
+deduplication:
+  method: "content_hash"
+  algorithm: "sha256"
+  
+  rules:
+    - id: "DEDUP-001"
+      description: "Hash entire chunk text"
+      implementation: "sha256(chunk.text.encode('utf-8')).hexdigest()"
+    
+    - id: "DEDUP-002"
+      description: "Normalize before hashing"
+      implementation: "lowercase, strip whitespace, remove punctuation"
+    
+    - id: "DEDUP-003"
+      description: "Keep oldest duplicate"
+      implementation: "If hash collision, keep chunk with earliest ts"
+    
+    - id: "DEDUP-004"
+      description: "Track provenance"
+      implementation: "Append duplicate source_ids to provenance array"
+  
+  collision_handling:
+    strategy: "keep_oldest"
+    update_provenance: true
+    log_collision: true
+
+# ==============================================================================
+# SECTION 4: EMBEDDING CONTRACTS
+# ==============================================================================
+
+embeddings:
+  method: "tfidf"
+  library: "sklearn.feature_extraction.text.TfidfVectorizer"
+  dimensions: 300
+  
+  parameters:
+    max_features: 300
+    ngram_range: [1, 2]
+    min_df: 2
+    max_df: 0.95
+    sublinear_tf: true
+  
+  storage:
+    format: "numpy.ndarray"
+    dtype: "float32"
+    serialization: "pickle"
+  
+  similarity:
+    metric: "cosine_similarity"
+    threshold: 0.5
+    
+  rules:
+    - id: "EMB-001"
+      description: "Generate embedding on consolidation"
+      implementation: "Create embedding in stage4 of consolidation"
+    
+    - id: "EMB-002"
+      description: "Store as binary BLOB"
+      implementation: "pickle.dumps(embedding) → BLOB column"
+    
+    - id: "EMB-003"
+      description: "Update on re-consolidation"
+      implementation: "Regenerate embedding if text changes"
+
+# ==============================================================================
+# SECTION 5: TRUST TIER CONTRACTS
+# ==============================================================================
+
+trust_tiers:
+  core:
+    description: "System-generated traces from ARK agents"
+    isolation: "full_trust"
+    consolidation_priority: 100
+    retention: "permanent"
+  
+  sandbox:
+    description: "User-generated content in testing"
+    isolation: "limited_trust"
+    consolidation_priority: 75
+    retention: "90_days"
+  
+  external:
+    description: "Third-party data and API responses"
+    isolation: "low_trust"
+    consolidation_priority: 50
+    retention: "30_days"
+  
+  unknown:
+    description: "Unclassified traces"
+    isolation: "quarantine_pending"
+    consolidation_priority: 0
+    retention: "7_days"
+  
+  quarantine:
+    description: "Suspicious or invalid traces"
+    isolation: "no_consolidation"
+    consolidation_priority: 0
+    retention: "7_days"
+  
+  rules:
+    - id: "TRUST-001"
+      description: "Never consolidate quarantine tier"
+      implementation: "Skip consolidation if trust_tier == 'quarantine'"
+    
+    - id: "TRUST-002"
+      description: "Prioritize core tier"
+      implementation: "Consolidate core tier first, then sandbox, then external"
+    
+    - id: "TRUST-003"
+      description: "Inherit trust tier"
+      implementation: "memory_chunk.trust_tier = reasoning_log.trust_tier"
+
+# ==============================================================================
+# SECTION 6: CONSOLIDATION CONTRACTS
+# ==============================================================================
+
+consolidation:
+  trigger:
+    interval: "6h"
+    min_traces: 10
+    max_batch_size: 1000
+  
+  pipeline:
+    - stage: "stage1_summarize"
+      input: "reasoning_log.output"
+      output: "memory_chunks.summary"
+      idempotent: true
+      
+    - stage: "stage2_compress"
+      input: "summary"
+      output: "memory_chunks.text"
+      idempotent: true
+      
+    - stage: "stage3_dedupe"
+      input: "text"
+      output: "hash check + dedup"
+      idempotent: true
+      
+    - stage: "stage4_embed"
+      input: "text"
+      output: "memory_chunks.embedding"
+      idempotent: true
+  
+  rules:
+    - id: "CONS-001"
+      description: "Idempotent consolidation"
+      implementation: "Running consolidation twice produces same result"
+    
+    - id: "CONS-002"
+      description: "Atomic batch processing"
+      implementation: "Commit entire batch or rollback on error"
+    
+    - id: "CONS-003"
+      description: "Provenance tracking"
+      implementation: "Record source_id chain for all chunks"
+    
+    - id: "CONS-004"
+      description: "Deterministic ordering"
+      implementation: "Process traces in timestamp order (oldest first)"
+
+# ==============================================================================
+# SECTION 7: RETRIEVAL CONTRACTS
+# ==============================================================================
+
+retrieval:
+  methods:
+    semantic_search:
+      description: "Vector similarity search"
+      implementation: "cosine_similarity(query_embedding, chunk_embeddings)"
+      min_threshold: 0.5
+      default_limit: 10
+      
+    keyword_search:
+      description: "Full-text search"
+      implementation: "SQL LIKE or FTS5"
+      
+    temporal_search:
+      description: "Time-based retrieval"
+      implementation: "Filter by ts range"
+    
+    agent_filter:
+      description: "Agent-specific recall"
+      implementation: "Filter by agent name"
+  
+  rules:
+    - id: "RETR-001"
+      description: "Respect trust tiers"
+      implementation: "Never return quarantine tier to agents"
+    
+    - id: "RETR-002"
+      description: "Sort by relevance"
+      implementation: "Order by similarity score DESC, then by ts DESC"
+    
+    - id: "RETR-003"
+      description: "Return metadata"
+      implementation: "Include source_id, ts, confidence, provenance"
+
+# ==============================================================================
+# SECTION 8: PERSISTENCE GUARANTEES
+# ==============================================================================
+
+persistence:
+  durability:
+    - "All writes use WAL mode for crash resilience"
+    - "Explicit fsync on critical operations"
+    - "Transaction isolation level: SERIALIZABLE"
+  
+  atomicity:
+    - "All batch operations wrapped in transactions"
+    - "Rollback on any stage failure"
+    - "No partial consolidation commits"
+  
+  consistency:
+    - "Enforce foreign key constraints (source_id → reasoning_log.id)"
+    - "Validate trust_tier enum values"
+    - "Check confidence bounds [0.0, 1.0]"
+  
+  idempotency:
+    - "Consolidate same trace multiple times → same chunk"
+    - "Deduplication prevents multiple identical chunks"
+    - "Hash-based conflict resolution"
+
+# ==============================================================================
+# SECTION 9: ERROR HANDLING
+# ==============================================================================
+
+error_handling:
+  database_locked:
+    action: "retry"
+    max_retries: 3
+    backoff: "exponential"
+    
+  corruption_detected:
+    action: "log_and_quarantine"
+    notification: "alert_admin"
+    
+  schema_mismatch:
+    action: "abort_and_log"
+    recovery: "run_migration"
+    
+  disk_full:
+    action: "pause_consolidation"
+    cleanup: "delete_old_external_tier"
+
+# ==============================================================================
+# SECTION 10: MIGRATION & VERSIONING
+# ==============================================================================
+
+versioning:
+  schema_version: "2.0"
+  backward_compatible: true
+  migration_path: "1.x → 2.0"
+  
+  migrations:
+    - version: "2.0"
+      date: "2025-11-13"
+      changes:
+        - "Added trust_tier column"
+        - "Added consolidated counter"
+        - "Improved indexing strategy"
+      rollback: "supported"
+
+# ==============================================================================
+# SECTION 11: TESTING CONTRACTS
+# ==============================================================================
+
+testing:
+  unit_tests:
+    - "test_ingest_trace_idempotent"
+    - "test_consolidation_deterministic"
+    - "test_deduplication_hash_collision"
+    - "test_trust_tier_isolation"
+    - "test_embedding_generation"
+  
+  integration_tests:
+    - "test_full_pipeline_kyle_to_aletheia"
+    - "test_crash_recovery_wal"
+    - "test_concurrent_consolidation"
+  
+  load_tests:
+    - "test_10k_traces_consolidation"
+    - "test_semantic_search_1M_chunks"
+
+# ==============================================================================
+# SECTION 12: PERFORMANCE TARGETS
+# ==============================================================================
+
+performance:
+  ingest_trace:
+    target: "< 10ms"
+    batch_size: 100
+  
+  consolidation:
+    target: "< 5min per 1000 traces"
+    parallelization: "batch-level"
+  
+  semantic_search:
+    target: "< 100ms for 10k chunks"
+    indexing: "embeddings pre-computed"
+  
+  database_size:
+    target: "< 10GB for 1M traces"
+    compression: "gzip on old chunks"
+
+# ==============================================================================
+# END OF SPECIFICATION
+# ==============================================================================
