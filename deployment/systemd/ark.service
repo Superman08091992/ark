@@ -1,0 +1,52 @@
+# ==============================================================================
+# ARK Complete System Service (REQ_INFRA_01)
+# ==============================================================================
+#
+# Master systemd service that manages all ARK components.
+# This is a wrapper that starts/stops backend and frontend together.
+#
+# Installation:
+#   sudo cp deployment/systemd/ark.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable ark
+#   sudo systemctl start ark
+#
+# Management:
+#   sudo systemctl status ark
+#   sudo systemctl restart ark
+#   sudo systemctl stop ark
+#   sudo journalctl -u ark -f
+#
+# ==============================================================================
+
+[Unit]
+Description=ARK Autonomous Reactive Kernel (Complete System)
+Documentation=https://github.com/Superman08091992/ark
+After=network.target redis.service
+Wants=redis.service
+Requires=ark-backend.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=user
+Group=user
+WorkingDirectory=/home/user/webapp
+
+# Environment
+EnvironmentFile=-/home/user/webapp/.env
+
+# Start ARK using the official startup script
+ExecStart=/home/user/webapp/arkstart.sh
+
+# Stop ARK using the official stop script (graceful)
+ExecStop=/home/user/webapp/arkstop.sh
+
+# Panic shutdown on emergency
+ExecStopPost=/home/user/webapp/arkstop.sh --force
+
+# Reload configuration
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

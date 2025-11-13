@@ -1,0 +1,80 @@
+# ==============================================================================
+# ARK Backend Service (REQ_INFRA_01)
+# ==============================================================================
+#
+# Systemd service file for ARK reasoning API backend.
+# Provides process supervision with automatic restart and logging.
+#
+# Installation:
+#   sudo cp deployment/systemd/ark-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable ark-backend
+#   sudo systemctl start ark-backend
+#
+# Management:
+#   sudo systemctl status ark-backend
+#   sudo systemctl restart ark-backend
+#   sudo systemctl stop ark-backend
+#   sudo journalctl -u ark-backend -f
+#
+# ==============================================================================
+
+[Unit]
+Description=ARK Reasoning API Backend
+Documentation=https://github.com/Superman08091992/ark
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=user
+Group=user
+WorkingDirectory=/home/user/webapp
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+Environment="ARK_ENVIRONMENT=production"
+EnvironmentFile=-/home/user/webapp/.env
+
+# Main process
+ExecStart=/home/user/webapp/venv/bin/python3 /home/user/webapp/reasoning_api.py
+
+# Pre-start checks
+ExecStartPre=/home/user/webapp/venv/bin/python3 -c "import sys; sys.exit(0)"
+ExecStartPre=/bin/mkdir -p /home/user/webapp/logs
+
+# Post-stop cleanup
+ExecStopPost=/bin/rm -f /tmp/ark_backend.pid
+
+# Process management
+Restart=on-failure
+RestartSec=10s
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+SendSIGKILL=yes
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=4G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ark-backend
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/user/webapp/logs /home/user/webapp/data /tmp
+
+# Working directory permissions
+WorkingDirectory=/home/user/webapp
+ReadWriteDirectories=/home/user/webapp/logs /home/user/webapp/data
+
+[Install]
+WantedBy=multi-user.target

@@ -100,5 +100,16 @@
     "sentiment": "neutral",
     "knowledgeNodes": 35,
     "infiniteMemory": 16
+  },
+  {
+    "timestamp": "2025-11-12T08:17:59.396Z",
+    "agent": "Kyle",
+    "type": "conversation",
+    "userMessage": "Di",
+    "agentResponse": "🔍 I'm processing your query. What specific information do you need?",
+    "topics": [],
+    "sentiment": "neutral",
+    "knowledgeNodes": 35,
+    "infiniteMemory": 16
   }
 ]
