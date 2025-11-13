@@ -51,7 +51,7 @@ python-dotenv==1.0.0
 # Cryptography & Security
 # ============================================================================
 PyNaCl>=1.5.0
-cryptography==41.0.7   # Ed25519 keys for ark-federation
+cryptography==44.0.1   # Ed25519 keys for ark-federation
 
 # ============================================================================
 # ARK Tools Suite (v1.0 - Added 2025-11-13)
